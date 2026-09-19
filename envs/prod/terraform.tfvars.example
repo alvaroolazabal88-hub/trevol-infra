@@ -1,0 +1,31 @@
+# Copia este archivo a terraform.tfvars (SIN el .example) y ajusta:
+
+project     = "trevol"
+domain_name = "trevolcamaguey.com"
+
+# Deja esto en false hasta que te llegue el correo de AWS confirmando
+# el registro del dominio. Ahi lo cambias a true y aplicas de nuevo.
+domain_active = false
+
+# A donde te llegan los avisos de gasto de AWS Budgets.
+alert_email = "tu-correo@ejemplo.com"
+
+monthly_budget_usd = 3
+
+# ---- Notificaciones (opcionales, dejar vacio "" si no se usan todavia) ----
+
+# Bot de Telegram que avisa CADA pedido nuevo al negocio.
+# Como conseguirlo: en Telegram, habla con @BotFather -> /newbot -> te da
+# el token. Luego agrega el bot a tu chat/grupo, mandale un mensaje, y visita
+# https://api.telegram.org/bot<TOKEN>/getUpdates para ver el "chat":{"id":...}
+telegram_bot_token = ""
+telegram_chat_id   = ""
+
+# WhatsApp al cliente confirmando su pedido, via Twilio.
+# Cuenta en twilio.com -> Account SID y Auth Token estan en el dashboard.
+# twilio_whatsapp_from es el numero de WhatsApp habilitado en Twilio
+# (el sandbox de pruebas usa +14155238886; para produccion real hace falta
+# un remitente de WhatsApp aprobado por Meta, ese tramite toma dias).
+twilio_account_sid   = ""
+twilio_auth_token    = ""
+twilio_whatsapp_from = ""

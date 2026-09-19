@@ -1,0 +1,21 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Lambda build artifact (se regenera solo en cada terraform apply)
+lambda/order_handler.zip
+**/__pycache__/
+*.pyc
+
+# OS
+.DS_Store
