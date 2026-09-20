@@ -16,8 +16,8 @@ terraform {
     }
   }
 
-  # Backend remoto: creado por /bootstrap. Los valores de bucket/table deben
-  # coincidir con los outputs de ese bootstrap.
+  # Remote backend: created by /bootstrap. The bucket/table values must
+  # match that bootstrap's outputs.
   backend "s3" {
     bucket         = "trevol-terraform-state"
     key            = "prod/terraform.tfstate"
