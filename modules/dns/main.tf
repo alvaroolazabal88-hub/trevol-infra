@@ -30,7 +30,7 @@ locals {
 resource "aws_acm_certificate" "site" {
   domain_name               = var.domain_name
   subject_alternative_names = ["www.${var.domain_name}"]
-  validation_method          = "DNS"
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true
@@ -48,11 +48,11 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = local.zone_id
-  name    = each.value.name
-  type    = each.value.type
-  records = [each.value.value]
-  ttl     = 300
+  zone_id         = local.zone_id
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.value]
+  ttl             = 300
   allow_overwrite = true
 }
 

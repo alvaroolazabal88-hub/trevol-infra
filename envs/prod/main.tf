@@ -43,10 +43,10 @@ module "dns" {
 module "frontend" {
   source = "../../modules/frontend"
 
-  project              = var.project
-  domain_name          = var.domain_active ? var.domain_name : ""
-  acm_certificate_arn  = var.domain_active ? module.dns[0].certificate_arn : ""
-  api_domain_name      = module.backend_api.api_domain_name
+  project             = var.project
+  domain_name         = var.domain_active ? var.domain_name : ""
+  acm_certificate_arn = var.domain_active ? module.dns[0].certificate_arn : ""
+  api_domain_name     = module.backend_api.api_domain_name
 }
 
 # --------------------------------------------------------- Registro del sitio
@@ -98,10 +98,10 @@ locals {
 resource "aws_s3_object" "site_files" {
   for_each = local.site_files
 
-  bucket       = module.frontend.bucket_name
-  key          = each.value
-  source       = "${path.module}/../../site/${each.value}"
-  etag         = filemd5("${path.module}/../../site/${each.value}")
+  bucket = module.frontend.bucket_name
+  key    = each.value
+  source = "${path.module}/../../site/${each.value}"
+  etag   = filemd5("${path.module}/../../site/${each.value}")
   content_type = lookup(
     local.content_types,
     try(regex("\\.[^.]+$", each.value), ""),

@@ -110,14 +110,14 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_logs" {
 
 # -------------------------------------------------------------- Lambda
 resource "aws_lambda_function" "order_handler" {
-  function_name = "${var.project}-order-handler"
-  role          = aws_iam_role.lambda_exec.arn
-  handler       = "handler.handler"
-  runtime       = "python3.12"
-  filename      = var.lambda_zip_path
+  function_name    = "${var.project}-order-handler"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "handler.handler"
+  runtime          = "python3.12"
+  filename         = var.lambda_zip_path
   source_code_hash = var.lambda_source_hash
-  timeout       = 10
-  memory_size   = 128 # El minimo. Mas memoria = mas rapido pero tambien mas caro; 128MB sobra para esto.
+  timeout          = 10
+  memory_size      = 128 # El minimo. Mas memoria = mas rapido pero tambien mas caro; 128MB sobra para esto.
 
   environment {
     variables = {
@@ -156,8 +156,8 @@ resource "aws_apigatewayv2_api" "orders" {
 
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.orders.id
-  integration_type        = "AWS_PROXY"
-  integration_uri         = aws_lambda_function.order_handler.invoke_arn
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.order_handler.invoke_arn
   payload_format_version = "2.0"
 }
 

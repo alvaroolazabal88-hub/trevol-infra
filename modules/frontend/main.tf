@@ -6,8 +6,8 @@
 # ============================================================================
 
 locals {
-  has_domain = var.domain_name != "" && var.acm_certificate_arn != ""
-  has_api    = var.api_domain_name != ""
+  has_domain       = var.domain_name != "" && var.acm_certificate_arn != ""
+  has_api          = var.api_domain_name != ""
   bucket_origin_id = "s3-site"
   api_origin_id    = "api-backend"
 }
@@ -83,19 +83,19 @@ resource "aws_cloudfront_distribution" "site" {
       origin_id   = local.api_origin_id
       custom_origin_config {
         http_port              = 80
-        https_port              = 443
-        origin_protocol_policy  = "https-only"
-        origin_ssl_protocols    = ["TLSv1.2"]
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
       }
     }
   }
 
   default_cache_behavior {
-    allowed_methods       = ["GET", "HEAD"]
+    allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = local.bucket_origin_id
     viewer_protocol_policy = "redirect-to-https"
-    compress                = true
+    compress               = true
 
     forwarded_values {
       query_string = false
@@ -109,13 +109,13 @@ resource "aws_cloudfront_distribution" "site" {
   dynamic "ordered_cache_behavior" {
     for_each = local.has_api ? [1] : []
     content {
-      path_pattern           = "/api/*"
-      allowed_methods         = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      path_pattern             = "/api/*"
+      allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
       cached_methods           = ["GET", "HEAD"]
       target_origin_id         = local.api_origin_id
       viewer_protocol_policy   = "redirect-to-https"
-      compress                  = true
-      cache_policy_id           = data.aws_cloudfront_cache_policy.disabled.id
+      compress                 = true
+      cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
       origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
     }
   }
