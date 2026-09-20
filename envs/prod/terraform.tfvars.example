@@ -1,31 +1,31 @@
-# Copia este archivo a terraform.tfvars (SIN el .example) y ajusta:
+# Copy this file to terraform.tfvars (WITHOUT the .example) and adjust:
 
 project     = "trevol"
 domain_name = "trevolcamaguey.com"
 
-# Deja esto en false hasta que te llegue el correo de AWS confirmando
-# el registro del dominio. Ahi lo cambias a true y aplicas de nuevo.
+# Leave this at false until the AWS email confirming domain registration
+# arrives. Then flip it to true and apply again.
 domain_active = false
 
-# A donde te llegan los avisos de gasto de AWS Budgets.
-alert_email = "tu-correo@ejemplo.com"
+# Where AWS Budgets spend alerts arrive.
+alert_email = "your-email@example.com"
 
 monthly_budget_usd = 3
 
-# ---- Notificaciones (opcionales, dejar vacio "" si no se usan todavia) ----
+# ---- Notifications (optional, leave "" if not in use yet) ----
 
-# Bot de Telegram que avisa CADA pedido nuevo al negocio.
-# Como conseguirlo: en Telegram, habla con @BotFather -> /newbot -> te da
-# el token. Luego agrega el bot a tu chat/grupo, mandale un mensaje, y visita
-# https://api.telegram.org/bot<TOKEN>/getUpdates para ver el "chat":{"id":...}
+# Telegram bot that alerts the business of EVERY new order.
+# How to get it: on Telegram, talk to @BotFather -> /newbot -> it gives you
+# the token. Then add the bot to your chat/group, message it, and visit
+# https://api.telegram.org/bot<TOKEN>/getUpdates to see the "chat":{"id":...}
 telegram_bot_token = ""
 telegram_chat_id   = ""
 
-# WhatsApp al cliente confirmando su pedido, via Twilio.
-# Cuenta en twilio.com -> Account SID y Auth Token estan en el dashboard.
-# twilio_whatsapp_from es el numero de WhatsApp habilitado en Twilio
-# (el sandbox de pruebas usa +14155238886; para produccion real hace falta
-# un remitente de WhatsApp aprobado por Meta, ese tramite toma dias).
+# WhatsApp to the customer confirming their order, via Twilio.
+# Account at twilio.com -> Account SID and Auth Token are on the dashboard.
+# twilio_whatsapp_from is the WhatsApp-enabled number on Twilio
+# (the test sandbox uses +14155238886; real production needs a WhatsApp
+# sender approved by Meta, and that approval takes a few days).
 twilio_account_sid   = ""
 twilio_auth_token    = ""
 twilio_whatsapp_from = ""
