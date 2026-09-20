@@ -1,15 +1,15 @@
 # ============================================================================
-# BOOTSTRAP — se aplica UNA SOLA VEZ, con estado local, antes que todo lo demás.
-# Crea el bucket S3 donde va a vivir el terraform.tfstate del proyecto real,
-# y la tabla DynamoDB que evita que dos "terraform apply" corran a la vez.
+# BOOTSTRAP — applied ONCE, with local state, before everything else. Creates
+# the S3 bucket that holds the real project's terraform.tfstate, and the
+# DynamoDB table that keeps two "terraform apply" runs from racing each other.
 #
-# Uso:
+# Usage:
 #   cd bootstrap
 #   terraform init
 #   terraform apply
 #
-# Después de esto, jamás se vuelve a tocar esta carpeta salvo que se quiera
-# destruir todo el proyecto desde cero.
+# After this, this folder is never touched again unless the whole project is
+# being torn down from scratch.
 # ============================================================================
 
 terraform {
@@ -20,8 +20,8 @@ terraform {
       version = "~> 5.0"
     }
   }
-  # Estado local a propósito: este bootstrap es el único módulo sin backend
-  # remoto, porque es el que CREA el backend remoto.
+  # Local state on purpose: this is the one module without a remote backend,
+  # because it is the one that creates the remote backend.
 }
 
 provider "aws" {
@@ -29,7 +29,7 @@ provider "aws" {
 }
 
 variable "project" {
-  description = "Nombre corto del proyecto, usado como prefijo de recursos"
+  description = "Short project name, used as the prefix for resource names"
   type        = string
   default     = "trevol"
 }
@@ -37,7 +37,7 @@ variable "project" {
 resource "aws_s3_bucket" "tf_state" {
   bucket = "${var.project}-terraform-state"
 
-  # Protección: "terraform destroy" no puede borrar este bucket por accidente.
+  # Guardrail: "terraform destroy" cannot delete this bucket by accident.
   lifecycle {
     prevent_destroy = true
   }
@@ -72,9 +72,9 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
   restrict_public_buckets = true
 }
 
-# Tabla de lock. Cae dentro del "Always Free" de DynamoDB (25 GB / 25 WCU-RCU
-# provisionados) — con el uso de un solo desarrollador aplicando Terraform de
-# vez en cuando, esto no genera cargo.
+# Lock table. Falls inside DynamoDB's Always Free tier (25 GB / 25 WCU-RCU
+# provisioned) — at the usage of one developer applying Terraform now and
+# then, this never generates a charge.
 resource "aws_dynamodb_table" "tf_lock" {
   name         = "${var.project}-terraform-lock"
   billing_mode = "PAY_PER_REQUEST"

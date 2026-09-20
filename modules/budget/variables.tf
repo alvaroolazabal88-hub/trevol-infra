@@ -4,7 +4,7 @@ variable "project" {
 
 variable "alert_email" {
   type        = string
-  description = "Correo donde llegan los avisos de gasto"
+  description = "Email address that receives spend alerts"
 }
 
 variable "monthly_limit_usd" {

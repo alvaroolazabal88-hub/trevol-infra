@@ -1,20 +1,18 @@
 # ============================================================================
-# ENTRYPOINT prod — une frontend + backend-api + dns (opcional) + budget.
+# ENTRYPOINT prod — composes frontend + backend-api + dns (optional) + budget.
 #
-# Flujo normal de uso:
-#   1) domain_active = false  -> terraform apply   (todo menos el dominio)
-#   2) cuando llegue el correo de AWS confirmando trevolcamaguey.com:
-#      domain_active = true  -> terraform apply de nuevo (conecta el dominio)
+# Normal flow:
+#   1) domain_active = false  -> terraform apply   (everything but the domain)
+#   2) once the AWS email confirming trevolcamaguey.com arrives:
+#      domain_active = true  -> terraform apply again (connects the domain)
 # ============================================================================
 
-# ------------------------------------------------------- Empaquetar el Lambda
 data "archive_file" "order_handler" {
   type        = "zip"
   source_dir  = "${path.module}/../../lambda/order_handler"
   output_path = "${path.module}/../../lambda/order_handler.zip"
 }
 
-# ------------------------------------------------------------------- Backend
 module "backend_api" {
   source = "../../modules/backend-api"
 
@@ -29,17 +27,15 @@ module "backend_api" {
   twilio_whatsapp_from = var.twilio_whatsapp_from
 }
 
-# ----------------------------------------------------------------------- DNS
 module "dns" {
   count  = var.domain_active ? 1 : 0
   source = "../../modules/dns"
 
   project     = var.project
   domain_name = var.domain_name
-  create_zone = false # el dominio se registro DESDE Route 53: la zona ya existe sola.
+  create_zone = false # the domain was registered THROUGH Route 53: the zone already exists on its own.
 }
 
-# ------------------------------------------------------------------ Frontend
 module "frontend" {
   source = "../../modules/frontend"
 
@@ -49,7 +45,6 @@ module "frontend" {
   api_domain_name     = module.backend_api.api_domain_name
 }
 
-# --------------------------------------------------------- Registro del sitio
 resource "aws_route53_record" "apex" {
   count   = var.domain_active ? 1 : 0
   zone_id = module.dns[0].zone_id
@@ -76,9 +71,8 @@ resource "aws_route53_record" "www" {
   }
 }
 
-# ------------------------------------------------ Subida de archivos del sitio
-# Sube TODO lo que haya en /site al bucket automaticamente en cada apply.
-# El etag (md5) hace que Terraform solo re-suba lo que cambio.
+# Uploads everything under /site to the bucket on every apply. The etag (md5)
+# is what makes Terraform re-upload only what actually changed.
 locals {
   content_types = {
     ".html" = "text/html"
@@ -109,9 +103,9 @@ resource "aws_s3_object" "site_files" {
   )
 }
 
-# CloudFront cachea el HTML hasta 1h (default_ttl). Sin esto, cada cambio al
-# sitio tardaria hasta 1h en verse. Se invalida solo cuando algun archivo
-# realmente cambio (el trigger es el hash combinado de todos los etags).
+# CloudFront caches HTML for up to 1h (default_ttl). Without this, a site
+# change could take up to an hour to show. It invalidates only when a file
+# actually changed (the trigger is the combined hash of every etag).
 resource "null_resource" "invalidate_cache" {
   triggers = {
     site_hash = md5(join("", [for f in aws_s3_object.site_files : f.etag]))
@@ -122,7 +116,6 @@ resource "null_resource" "invalidate_cache" {
   }
 }
 
-# --------------------------------------------------------------------- Budget
 module "budget" {
   source = "../../modules/budget"
 

@@ -4,11 +4,11 @@ variable "project" {
 
 variable "domain_name" {
   type        = string
-  description = "trevolcamaguey.com"
+  description = "Domain name, e.g. trevolcamaguey.com"
 }
 
 variable "create_zone" {
   type        = bool
-  description = "true la primera vez (crea la hosted zone). false en aplicaciones posteriores si ya existe."
+  description = "true the first time (creates the hosted zone). false on later applies if it already exists."
   default     = true
 }

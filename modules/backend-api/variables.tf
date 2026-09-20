@@ -4,48 +4,48 @@ variable "project" {
 
 variable "lambda_zip_path" {
   type        = string
-  description = "Ruta al .zip empaquetado del Lambda"
+  description = "Path to the packaged Lambda .zip"
 }
 
 variable "lambda_source_hash" {
   type        = string
-  description = "Hash del código fuente, para que Terraform sepa cuándo redesplegar"
+  description = "Hash of the source code, so Terraform knows when to redeploy"
 }
 
-# ---- Notificaciones (todas opcionales -- si se dejan vacías, el Lambda
-# simplemente no manda esa notificación, el pedido igual se guarda bien) ----
+# ---- Notifications (all optional -- if left empty, the Lambda simply skips
+# that notification; the order is still saved either way) ----
 
 variable "telegram_bot_token" {
   type        = string
-  description = "Token del bot de Telegram (via @BotFather) para avisar pedidos nuevos"
+  description = "Telegram bot token (via @BotFather) to notify new orders"
   default     = ""
   sensitive   = true
 }
 
 variable "telegram_chat_id" {
   type        = string
-  description = "Chat id de Telegram donde llegan los avisos de pedido"
+  description = "Telegram chat id where order alerts arrive"
   default     = ""
   sensitive   = true
 }
 
 variable "twilio_account_sid" {
   type        = string
-  description = "Account SID de Twilio, para mandar WhatsApp al cliente"
+  description = "Twilio Account SID, to send WhatsApp to the customer"
   default     = ""
   sensitive   = true
 }
 
 variable "twilio_auth_token" {
   type        = string
-  description = "Auth Token de Twilio"
+  description = "Twilio Auth Token"
   default     = ""
   sensitive   = true
 }
 
 variable "twilio_whatsapp_from" {
   type        = string
-  description = "Número de WhatsApp habilitado en Twilio (formato +1XXXXXXXXXX)"
+  description = "WhatsApp-enabled number on Twilio (format +1XXXXXXXXXX)"
   default     = ""
   sensitive   = true
 }

@@ -1,8 +1,8 @@
 """
-Lambda: recibe pedidos y validaciones de cupon del formulario de la pagina.
-Sin frameworks pesados a proposito -- asi el paquete es chiquito y arranca
-rapido (menos tiempo de ejecucion facturado = mas barato). Notificaciones
-(Telegram, WhatsApp) van por HTTPS plano con urllib, sin SDKs extra.
+Lambda: receives orders and coupon validations from the page's form.
+No heavy frameworks on purpose -- keeps the package small and cold starts
+fast (less billed execution time = cheaper). Notifications (Telegram,
+WhatsApp) go out over plain HTTPS with urllib, no extra SDKs.
 """
 import base64
 import json
@@ -26,7 +26,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
-TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # ej: +14155238886
+TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # e.g. +14155238886
 
 dynamodb = boto3.resource("dynamodb")
 orders_table = dynamodb.Table(ORDERS_TABLE)
@@ -39,8 +39,8 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
-# Catalogo real del negocio -- fuente de verdad de precios. El navegador
-# NUNCA decide el precio; solo manda ids y cantidades, el servidor calcula.
+# The business's real catalog -- source of truth for prices. The browser
+# NEVER decides the price; it only sends ids and quantities, the server computes it.
 PRODUCTS = {
     "cafe_con_leche":    {"name": "Café con leche",              "price": 600},
     "batido_proteina":   {"name": "Batido de proteína",          "price": 1800},
@@ -72,7 +72,7 @@ def _json_default(o):
 
 
 def _parse_items(items):
-    """Valida items del carrito. Devuelve (clean_items, None) o (None, error_msg)."""
+    """Validate cart items. Returns (clean_items, None) or (None, error_msg)."""
     if not items or not isinstance(items, list):
         return None, "El pedido necesita al menos un producto"
 
@@ -101,7 +101,7 @@ def _subtotal(clean_items):
 
 
 def _lookup_coupon(code):
-    """Devuelve (coupon_item, error_msg). coupon_item es None si no aplica."""
+    """Returns (coupon_item, error_msg). coupon_item is None if not applicable."""
     if not code:
         return None, None
     code = code.strip().upper()
@@ -263,9 +263,9 @@ def _handle_create_order(payload):
     discount = _apply_discount(subtotal, coupon)
     final_total = subtotal - discount
 
-    # Si hay cupon con tope de usos, lo reservamos atomicamente -- si dos
-    # pedidos llegan a la vez y ya no queda cupo, uno de los dos falla aqui
-    # en vez de dejar pasar mas usos de los permitidos.
+    # If the coupon has a usage cap, reserve it atomically -- if two orders
+    # arrive at the same time and there's no room left, one of the two fails
+    # here instead of letting more uses through than are allowed.
     if coupon and int(coupon.get("max_uses", 0)):
         try:
             coupons_table.update_item(
@@ -304,7 +304,7 @@ def _handle_create_order(payload):
 
     try:
         _upsert_customer(phone, name, alias, final_total)
-    except Exception as e:  # nunca bloquear el pedido por esto
+    except Exception as e:  # never block the order over this
         print(f"Customer upsert failed: {e}")
 
     _notify_telegram(order_id, name, phone, address, clean_items, final_total, notes)

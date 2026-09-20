@@ -1,25 +1,25 @@
-# TREVol / Macro Cocina Fit — infra en AWS
+# TREVol / Macro Cocina Fit — AWS infrastructure
 
-Sitio estático (S3 + CloudFront) + backend de pedidos serverless
-(API Gateway + Lambda + DynamoDB). Sin EC2, sin ALB, sin NAT Gateway.
-Costo estimado corriendo todo el mes: **$0.50 – $1.50**, con alarma en $3.
+Static site (S3 + CloudFront) + serverless order backend
+(API Gateway + Lambda + DynamoDB). No EC2, no ALB, no NAT Gateway.
+Estimated cost running all month: **$0.50 – $1.50**, with an alarm at $3.
 
-## Instalar Terraform (una vez, en tu máquina — no en este chat)
+## Install Terraform (once, on your machine — not in this chat)
 
 ```bash
 brew install terraform          # Mac
-# o: https://developer.hashicorp.com/terraform/install
-terraform version                # confirmar que corrió
+# or: https://developer.hashicorp.com/terraform/install
+terraform version                # confirm it ran
 ```
 
-También necesitas la AWS CLI configurada con tus credenciales:
+You also need the AWS CLI configured with your credentials:
 ```bash
 aws configure
 ```
 
-## Paso 1 — Bootstrap (SOLO la primera vez)
+## Step 1 — Bootstrap (ONLY the first time)
 
-Crea el bucket de estado y la tabla de lock. Esto usa estado local a propósito.
+Creates the state bucket and the lock table. This uses local state on purpose.
 
 ```bash
 cd bootstrap
@@ -27,35 +27,35 @@ terraform init
 terraform apply
 ```
 
-Confirma que los nombres de los outputs (`trevol-terraform-state`,
-`trevol-terraform-lock`) coinciden con lo que está escrito en
-`envs/prod/providers.tf`. Si cambiaste `project` del default `trevol`,
-ajusta ese archivo a mano.
+Confirm the output names (`trevol-terraform-state`,
+`trevol-terraform-lock`) match what's written in
+`envs/prod/providers.tf`. If you changed `project` from the default
+`trevol`, adjust that file by hand.
 
-## Paso 2 — Configurar variables
+## Step 2 — Configure variables
 
 ```bash
 cd ../envs/prod
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-Edita `terraform.tfvars`: pon tu correo real en `alert_email` (ahí llegan
-los avisos de gasto). Deja `domain_active = false` por ahora.
+Edit `terraform.tfvars`: put your real email in `alert_email` (that's
+where spend alerts arrive). Leave `domain_active = false` for now.
 
-## Paso 3 — Primer apply (sin dominio todavía)
+## Step 3 — First apply (no domain yet)
 
 ```bash
 terraform init
 terraform apply
 ```
 
-Al terminar, el output `site_url` te da una URL tipo
-`https://d111111abcdef8.cloudfront.net` — el sitio ya está arriba y
-funcionando ahí, con el formulario de pedidos incluido.
+When it finishes, the `site_url` output gives you a URL like
+`https://d111111abcdef8.cloudfront.net` — the site is already up and
+running there, order form included.
 
-## Paso 4 — Cuando llegue el correo de AWS confirmando el dominio
+## Step 4 — Once the AWS email confirming the domain arrives
 
-Edita `terraform.tfvars`:
+Edit `terraform.tfvars`:
 ```hcl
 domain_active = true
 ```
@@ -64,36 +64,36 @@ domain_active = true
 terraform apply
 ```
 
-Esto conecta Route 53, valida el certificado HTTPS automáticamente
-(puede tardar unos minutos en el primer apply mientras ACM valida) y
-mueve el sitio a `https://trevolcamaguey.com`.
+This connects Route 53, validates the HTTPS certificate automatically
+(can take a few minutes on the first apply while ACM validates), and
+moves the site to `https://trevolcamaguey.com`.
 
-## Actualizar el contenido de la página
+## Updating the page content
 
-Solo edita los archivos dentro de `/site` y vuelve a correr:
+Just edit the files under `/site` and run again:
 ```bash
 terraform apply
 ```
-Terraform sube solo lo que cambió (compara por hash).
+Terraform only uploads what changed (compared by hash).
 
-## Bajar todo (para no gastar nada mientras no se usa)
+## Tearing it all down (to spend nothing while it's not in use)
 
 ```bash
 cd envs/prod
 terraform destroy
 ```
-El bootstrap (bucket de estado) se queda — nunca lo destruyas salvo que
-quieras abandonar el proyecto por completo.
+The bootstrap (state bucket) stays — never destroy it unless you want
+to abandon the project entirely.
 
-## Estructura
+## Structure
 
 ```
-bootstrap/        Bucket S3 + tabla DynamoDB para el estado de Terraform (una vez)
-envs/prod/        El "entrypoint" real: une todos los módulos
-modules/frontend/ S3 + CloudFront (el sitio)
-modules/dns/      Route 53 + certificado ACM (HTTPS)
-modules/backend-api/ DynamoDB + Lambda + API Gateway (el formulario de pedidos)
-modules/budget/   Alarma de AWS Budgets a $3/mes
-lambda/order_handler/ Código Python del Lambda que guarda los pedidos
-site/             HTML/CSS/JS del sitio — esto es lo que se sube a S3
+bootstrap/        S3 bucket + DynamoDB table for Terraform state (once)
+envs/prod/        The real "entrypoint": composes every module
+modules/frontend/ S3 + CloudFront (the site)
+modules/dns/      Route 53 + ACM certificate (HTTPS)
+modules/backend-api/ DynamoDB + Lambda + API Gateway (the order form)
+modules/budget/   AWS Budgets alarm at $3/month
+lambda/order_handler/ Python source for the Lambda that saves orders
+site/             HTML/CSS/JS for the site — this is what gets uploaded to S3
 ```

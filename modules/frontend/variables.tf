@@ -1,22 +1,22 @@
 variable "project" {
   type        = string
-  description = "Nombre corto del proyecto"
+  description = "Short project name"
 }
 
 variable "domain_name" {
   type        = string
-  description = "Dominio del sitio, ej. trevolcamaguey.com. Vacío si todavía no está activo."
+  description = "Site domain, e.g. trevolcamaguey.com. Empty if not active yet."
   default     = ""
 }
 
 variable "acm_certificate_arn" {
   type        = string
-  description = "ARN del certificado ACM (us-east-1) para el dominio. Vacío si todavía no hay dominio."
+  description = "ARN of the ACM certificate (us-east-1) for the domain. Empty if there is no domain yet."
   default     = ""
 }
 
 variable "api_domain_name" {
   type        = string
-  description = "Dominio invocable del API Gateway, para que CloudFront lo use como segundo origin (/api/*)"
+  description = "Invocable API Gateway domain, so CloudFront can use it as a second origin (/api/*)"
   default     = ""
 }

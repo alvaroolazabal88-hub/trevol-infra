@@ -1,14 +1,13 @@
 # ============================================================================
-# MODULO BACKEND-API — DynamoDB (pedidos) + Lambda + API Gateway HTTP API.
+# BACKEND-API MODULE — DynamoDB (orders) + Lambda + API Gateway HTTP API.
 #
-# Todo pago-por-uso. Con el volumen esperado (decenas de pedidos al dia, no
-# miles), esto se queda en centavos de dolar al mes, muy por debajo del
-# tope de $3.
+# All pay-per-use. At the expected volume (dozens of orders a day, not
+# thousands), this stays in cents of a dollar per month, well under the
+# $3 cap.
 # ============================================================================
 
-# -------------------------------------------------------------- DynamoDB
-# On-demand: no hay que adivinar capacidad, y para este volumen cae dentro
-# o muy cerca del tier "siempre gratis" (25 GB de almacenamiento).
+# On-demand: no capacity to guess at, and at this volume it falls inside or
+# very close to the "always free" tier (25 GB of storage).
 resource "aws_dynamodb_table" "orders" {
   name         = "${var.project}-orders"
   billing_mode = "PAY_PER_REQUEST"
@@ -20,13 +19,13 @@ resource "aws_dynamodb_table" "orders" {
   }
 
   point_in_time_recovery {
-    enabled = false # Mantiene el costo en $0. Se puede activar mas adelante si hace falta.
+    enabled = false # Keeps the cost at $0. Can be turned on later if needed.
   }
 
   tags = { Project = var.project }
 }
 
-# Cupones de descuento -- code es el codigo que el cliente escribe.
+# Discount coupons -- code is what the customer types in.
 resource "aws_dynamodb_table" "coupons" {
   name         = "${var.project}-coupons"
   billing_mode = "PAY_PER_REQUEST"
@@ -44,8 +43,8 @@ resource "aws_dynamodb_table" "coupons" {
   tags = { Project = var.project }
 }
 
-# Clientes -- se va llenando solo con cada pedido (nombre, alias, cuanto ha
-# gastado). Sirve luego para mandar promos personalizadas por WhatsApp.
+# Customers -- fills itself in with each order (name, alias, how much they've
+# spent). Used later to send personalized WhatsApp promotions.
 resource "aws_dynamodb_table" "customers" {
   name         = "${var.project}-customers"
   billing_mode = "PAY_PER_REQUEST"
@@ -63,7 +62,6 @@ resource "aws_dynamodb_table" "customers" {
   tags = { Project = var.project }
 }
 
-# ---------------------------------------------------------------- IAM
 resource "aws_iam_role" "lambda_exec" {
   name = "${var.project}-order-handler-role"
 
@@ -108,7 +106,6 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# -------------------------------------------------------------- Lambda
 resource "aws_lambda_function" "order_handler" {
   function_name    = "${var.project}-order-handler"
   role             = aws_iam_role.lambda_exec.arn
@@ -117,7 +114,7 @@ resource "aws_lambda_function" "order_handler" {
   filename         = var.lambda_zip_path
   source_code_hash = var.lambda_source_hash
   timeout          = 10
-  memory_size      = 128 # El minimo. Mas memoria = mas rapido pero tambien mas caro; 128MB sobra para esto.
+  memory_size      = 128 # The minimum. More memory = faster but also pricier; 128MB is plenty here.
 
   environment {
     variables = {
@@ -137,12 +134,11 @@ resource "aws_lambda_function" "order_handler" {
 
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${aws_lambda_function.order_handler.function_name}"
-  retention_in_days = 14 # Evita que los logs crezcan para siempre y generen costo de almacenamiento.
+  retention_in_days = 14 # Keeps logs from growing forever and generating storage cost.
 }
 
-# ---------------------------------------------------------- API Gateway
-# HTTP API (no REST API): mas barata -- $1.00 por millon de llamadas contra
-# $3.50 de la REST API clasica -- y sobra en features para este caso de uso.
+# HTTP API (not REST API): cheaper -- $1.00 per million calls against $3.50
+# for the classic REST API -- and has more than enough features for this.
 resource "aws_apigatewayv2_api" "orders" {
   name          = "${var.project}-orders-api"
   protocol_type = "HTTP"

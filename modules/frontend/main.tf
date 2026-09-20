@@ -1,8 +1,8 @@
 # ============================================================================
-# MODULO FRONTEND — sitio estatico en S3, servido por CloudFront.
-# Si se pasa api_domain_name, CloudFront tambien enruta /api/* al backend,
-# asi el sitio y la API viven bajo el MISMO dominio (sin problemas de CORS,
-# y el cliente nunca ve la URL fea del API Gateway).
+# FRONTEND MODULE — static site on S3, served by CloudFront.
+# If api_domain_name is passed, CloudFront also routes /api/* to the backend,
+# so the site and the API live under the SAME domain (no CORS problems, and
+# the customer never sees the ugly API Gateway URL).
 # ============================================================================
 
 locals {
@@ -12,7 +12,6 @@ locals {
   api_origin_id    = "api-backend"
 }
 
-# ---------------------------------------------------------------- Bucket S3
 resource "aws_s3_bucket" "site" {
   bucket = "${var.project}-site-${data.aws_caller_identity.current.account_id}"
 
@@ -29,13 +28,12 @@ resource "aws_s3_bucket_public_access_block" "site" {
   restrict_public_buckets = true
 }
 
-# Nota: NO se usa aws_s3_bucket_website_configuration a proposito. Con OAC
-# (Origin Access Control), CloudFront habla con el endpoint REST de S3, no
-# con el endpoint de "static website hosting" -- ese endpoint exige el
-# bucket publico, que es justo lo que evitamos al usar OAC. El index/404 se
-# resuelve del lado de CloudFront (default_root_object + custom_error_response).
+# Note: aws_s3_bucket_website_configuration is deliberately NOT used. With OAC
+# (Origin Access Control), CloudFront talks to S3's REST endpoint, not to the
+# "static website hosting" endpoint -- that endpoint requires the bucket to
+# be public, which is exactly what OAC avoids. index/404 is resolved on the
+# CloudFront side instead (default_root_object + custom_error_response).
 
-# --------------------------------------------------- CloudFront <-> S3 (OAC)
 resource "aws_cloudfront_origin_access_control" "site" {
   name                              = "${var.project}-oac"
   origin_access_control_origin_type = "s3"
@@ -62,12 +60,11 @@ resource "aws_s3_bucket_policy" "site" {
   })
 }
 
-# -------------------------------------------------------- Distribucion CDN
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  price_class         = "PriceClass_100" # Solo NA + Europa: la mas barata, suficiente para Cuba/US.
+  price_class         = "PriceClass_100" # North America + Europe only: the cheapest tier, plenty for Cuba/US.
   aliases             = local.has_domain ? [var.domain_name, "www.${var.domain_name}"] : []
 
   origin {
@@ -140,7 +137,7 @@ resource "aws_cloudfront_distribution" "site" {
   tags = { Project = var.project }
 }
 
-# Politicas administradas de AWS, reusadas para no reinventar cache/forwarding.
+# AWS-managed policies, reused instead of reinventing cache/forwarding.
 data "aws_cloudfront_cache_policy" "disabled" {
   name = "Managed-CachingDisabled"
 }

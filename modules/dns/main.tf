@@ -1,11 +1,12 @@
 # ============================================================================
-# MODULO DNS — zona de Route 53 + certificado ACM (HTTPS) para el dominio.
+# DNS MODULE — Route 53 zone + ACM certificate (HTTPS) for the domain.
 #
-# IMPORTANTE: cuando registras un dominio DESDE Route 53 (que es lo que
-# hiciste), AWS crea automaticamente una hosted zone publica para ese
-# dominio y ya conecta los nameservers solo. Por eso create_zone=false por
-# defecto: usamos la zona que YA existe, en vez de crear una segunda y
-# terminar con dos hosted zones peleando por el mismo dominio.
+# IMPORTANT: when you register a domain THROUGH Route 53 (which is what
+# happened here), AWS automatically creates a public hosted zone for that
+# domain and wires up the nameservers on its own. That's why create_zone
+# defaults to false: use the zone that ALREADY exists, instead of creating a
+# second one and ending up with two hosted zones fighting over the same
+# domain.
 # ============================================================================
 
 data "aws_route53_zone" "existing" {
@@ -23,10 +24,9 @@ locals {
   zone_id = var.create_zone ? aws_route53_zone.new[0].zone_id : data.aws_route53_zone.existing[0].zone_id
 }
 
-# ---------------------------------------------------------------- Certificado
-# CloudFront exige que el certificado este en us-east-1 (sin importar en que
-# region corra el resto). El provider por defecto de este proyecto ya es
-# us-east-1, asi que no hace falta alias de provider.
+# CloudFront requires the certificate to be in us-east-1 (no matter which
+# region everything else runs in). This project's default provider is
+# already us-east-1, so no provider alias is needed.
 resource "aws_acm_certificate" "site" {
   domain_name               = var.domain_name
   subject_alternative_names = ["www.${var.domain_name}"]

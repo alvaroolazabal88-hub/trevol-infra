@@ -1,8 +1,8 @@
 # ============================================================================
-# MODULO BUDGET — avisa por correo ANTES de que el gasto se salga del tope.
-# Dos alarmas: una temprana (60% = $1.80) y una en el limite real ($3).
-# Esto no bloquea el gasto, solo avisa -- AWS Budgets no puede "cortar" el
-# gasto en tiempo real, solo notificar.
+# BUDGET MODULE — emails a warning BEFORE spend goes over the cap.
+# Two alarms: an early one (60% = $1.80) and one at the real limit ($3).
+# This does not block spend, it only warns -- AWS Budgets cannot "cut off"
+# spend in real time, only notify.
 # ============================================================================
 
 resource "aws_budgets_budget" "monthly_cap" {
