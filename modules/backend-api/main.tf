@@ -18,6 +18,26 @@ resource "aws_dynamodb_table" "orders" {
     type = "S"
   }
 
+  attribute {
+    name = "phone"
+    type = "S"
+  }
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  # To quickly find "the pending-confirmation order for this phone number"
+  # when the WhatsApp reply arrives -- without this it would mean scanning
+  # the whole table on every message.
+  global_secondary_index {
+    name            = "phone-index"
+    hash_key        = "phone"
+    range_key       = "created_at"
+    projection_type = "ALL"
+  }
+
   point_in_time_recovery {
     enabled = false # Keeps the cost at $0. Can be turned on later if needed.
   }
@@ -84,8 +104,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:PutItem"]
-        Resource = aws_dynamodb_table.orders.arn
+        Action   = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem", "dynamodb:Query"]
+        Resource = [aws_dynamodb_table.orders.arn, "${aws_dynamodb_table.orders.arn}/index/*"]
       },
       {
         Effect   = "Allow"
@@ -94,7 +114,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
       },
       {
         Effect   = "Allow"
-        Action   = ["dynamodb:UpdateItem"]
+        Action   = ["dynamodb:GetItem", "dynamodb:UpdateItem"]
         Resource = aws_dynamodb_table.customers.arn
       }
     ]
@@ -126,6 +146,8 @@ resource "aws_lambda_function" "order_handler" {
       TWILIO_ACCOUNT_SID   = var.twilio_account_sid
       TWILIO_AUTH_TOKEN    = var.twilio_auth_token
       TWILIO_WHATSAPP_FROM = var.twilio_whatsapp_from
+      WEBHOOK_PUBLIC_URL   = var.webhook_public_url
+      ADMIN_TOKEN          = var.admin_token
     }
   }
 
@@ -166,6 +188,18 @@ resource "aws_apigatewayv2_route" "post_order" {
 resource "aws_apigatewayv2_route" "validate_coupon" {
   api_id    = aws_apigatewayv2_api.orders.id
   route_key = "POST /api/coupons/validate"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "whatsapp_webhook" {
+  api_id    = aws_apigatewayv2_api.orders.id
+  route_key = "POST /api/whatsapp/webhook"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "mark_no_show" {
+  api_id    = aws_apigatewayv2_api.orders.id
+  route_key = "POST /api/orders/{order_id}/no-show"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

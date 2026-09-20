@@ -25,6 +25,16 @@ module "backend_api" {
   twilio_account_sid   = var.twilio_account_sid
   twilio_auth_token    = var.twilio_auth_token
   twilio_whatsapp_from = var.twilio_whatsapp_from
+  webhook_public_url   = "https://${var.domain_name}/api/whatsapp/webhook"
+  admin_token          = random_password.admin_token.result
+}
+
+# Token for admin actions (e.g. marking a "no-show"). Generated on its own --
+# no need to invent one. Read it with:
+#   terraform output -raw admin_token
+resource "random_password" "admin_token" {
+  length  = 32
+  special = false
 }
 
 module "dns" {

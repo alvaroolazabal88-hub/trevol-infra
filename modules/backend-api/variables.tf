@@ -49,3 +49,16 @@ variable "twilio_whatsapp_from" {
   default     = ""
   sensitive   = true
 }
+
+variable "webhook_public_url" {
+  type        = string
+  description = "Exact public URL configured in Twilio to receive incoming messages (used to validate the signature)"
+  default     = ""
+}
+
+variable "admin_token" {
+  type        = string
+  description = "Secret token for admin actions (e.g. marking a 'no-show')"
+  default     = ""
+  sensitive   = true
+}

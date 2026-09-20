@@ -26,6 +26,11 @@ output "customers_table" {
   value = module.backend_api.customers_table_name
 }
 
+output "admin_token" {
+  value     = random_password.admin_token.result
+  sensitive = true
+}
+
 output "next_step" {
   value = var.domain_active ? "Dominio conectado. El sitio ya responde en https://${var.domain_name}" : "Sitio arriba en la URL de CloudFront. Cuando llegue el correo de AWS confirmando el dominio, pon domain_active=true y vuelve a aplicar."
 }

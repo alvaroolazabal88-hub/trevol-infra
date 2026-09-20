@@ -1,10 +1,13 @@
 """
-Lambda: receives orders and coupon validations from the page's form.
-No heavy frameworks on purpose -- keeps the package small and cold starts
-fast (less billed execution time = cheaper). Notifications (Telegram,
-WhatsApp) go out over plain HTTPS with urllib, no extra SDKs.
+Lambda: receives orders, validates coupons, and handles order confirmation
+over WhatsApp (Twilio). No heavy frameworks on purpose -- keeps the package
+small and cold starts fast (less billed execution time = cheaper).
+Notifications (Telegram, WhatsApp) go out over plain HTTPS with urllib, no
+extra SDKs.
 """
 import base64
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -14,9 +17,10 @@ import urllib.request
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
+from xml.sax.saxutils import escape as xml_escape
 
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, Key
 
 ORDERS_TABLE = os.environ["ORDERS_TABLE"]
 COUPONS_TABLE = os.environ["COUPONS_TABLE"]
@@ -27,6 +31,10 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "")  # e.g. +14155238886
+WEBHOOK_PUBLIC_URL = os.environ.get("WEBHOOK_PUBLIC_URL", "")  # https://yourdomain/api/whatsapp/webhook
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
+STRIKES_TO_BLACKLIST = 2
 
 dynamodb = boto3.resource("dynamodb")
 orders_table = dynamodb.Table(ORDERS_TABLE)
@@ -56,6 +64,9 @@ PRODUCTS = {
 PHONE_RE = re.compile(r"^\+?[0-9]{7,15}$")
 COUPON_RE = re.compile(r"^[A-Za-z0-9_-]{3,20}$")
 
+YES_WORDS = {"si", "sí", "s", "yes", "y", "confirmo", "confirmar"}
+NO_WORDS = {"no", "n", "cancelo", "cancelar"}
+
 
 def _response(status, body):
     return {
@@ -63,6 +74,14 @@ def _response(status, body):
         "headers": {**CORS_HEADERS, "Content-Type": "application/json"},
         "body": json.dumps(body, ensure_ascii=False, default=_json_default),
     }
+
+
+def _twiml_response(message_text):
+    xml = (
+        "<?xml version='1.0' encoding='UTF-8'?>"
+        f"<Response><Message>{xml_escape(message_text)}</Message></Response>"
+    )
+    return {"statusCode": 200, "headers": {"Content-Type": "text/xml"}, "body": xml}
 
 
 def _json_default(o):
@@ -167,6 +186,10 @@ def _handle_validate_coupon(payload):
     })
 
 
+def _get_customer(phone):
+    return customers_table.get_item(Key={"phone": phone}).get("Item")
+
+
 def _upsert_customer(phone, name, alias, final_total):
     now = datetime.now(timezone.utc).isoformat()
     customers_table.update_item(
@@ -187,20 +210,9 @@ def _upsert_customer(phone, name, alias, final_total):
     )
 
 
-def _notify_telegram(order_id, name, phone, address, items, final_total, notes):
+def _notify_telegram(text):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
-    lines = [f"{i['qty']}x {i['name']}" for i in items]
-    text = (
-        f"🆕 *Nuevo pedido* #{order_id[:8]}\n"
-        f"👤 {name}" + (f"\n📞 {phone}" if phone else "") +
-        f"\n📍 {address}\n\n"
-        + "\n".join(lines) +
-        f"\n\n💰 Total: {final_total} CUP"
-    )
-    if notes:
-        text += f"\n📝 {notes}"
-
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     data = urllib.parse.urlencode({
         "chat_id": TELEGRAM_CHAT_ID,
@@ -213,14 +225,24 @@ def _notify_telegram(order_id, name, phone, address, items, final_total, notes):
         print(f"Telegram notify failed: {e}")
 
 
-def _notify_whatsapp(phone, name):
-    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and phone):
-        return
-    body = (
-        f"Hola {name}, ¡tenemos tu orden! 🍽️ TREVol la está preparando. "
-        f"Te contactamos en breve para confirmar el tiempo estimado de entrega. "
-        f"Recuerda: se paga al recibir."
+def _notify_new_order_telegram(order_id, name, phone, address, items, final_total, notes):
+    lines = [f"{i['qty']}x {i['name']}" for i in items]
+    text = (
+        f"🆕 *Nuevo pedido* #{order_id[:8]}\n"
+        f"👤 {name}" + (f"\n📞 {phone}" if phone else "") +
+        f"\n📍 {address}\n\n"
+        + "\n".join(lines) +
+        f"\n\n💰 Total: {final_total} CUP\n"
+        f"⏳ Esperando confirmación por WhatsApp"
     )
+    if notes:
+        text += f"\n📝 {notes}"
+    _notify_telegram(text)
+
+
+def _send_whatsapp(phone, body):
+    if not (TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_WHATSAPP_FROM and phone):
+        return False
     url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
     data = urllib.parse.urlencode({
         "From": f"whatsapp:{TWILIO_WHATSAPP_FROM}",
@@ -231,8 +253,22 @@ def _notify_whatsapp(phone, name):
     req = urllib.request.Request(url, data=data, headers={"Authorization": f"Basic {auth}"})
     try:
         urllib.request.urlopen(req, timeout=5)
+        return True
     except (urllib.error.URLError, urllib.error.HTTPError) as e:
         print(f"WhatsApp notify failed: {e}")
+        return False
+
+
+def _send_confirmation_request(phone, name, items, final_total):
+    lines = ", ".join(f"{i['qty']}x {i['name']}" for i in items)
+    body = (
+        f"Hola {name}, ¡somos TREVol! 🌿\n\n"
+        f"Pediste: {lines}\n"
+        f"Total: {final_total} CUP (se paga al recibir)\n\n"
+        f"Para confirmar tu pedido responde *SI*.\n"
+        f"Si ya no lo quieres, responde *NO* para cancelarlo."
+    )
+    _send_whatsapp(phone, body)
 
 
 def _handle_create_order(payload):
@@ -250,6 +286,10 @@ def _handle_create_order(payload):
         return _response(400, {"error": "Dirección requerida (máximo 200 caracteres)"})
     if not PHONE_RE.match(phone):
         return _response(400, {"error": "Teléfono inválido"})
+
+    customer = _get_customer(phone)
+    if customer and customer.get("blacklisted"):
+        return _response(403, {"error": "No podemos procesar tu pedido. Contacta al negocio para más información."})
 
     clean_items, err = _parse_items(items)
     if err:
@@ -300,6 +340,8 @@ def _handle_create_order(payload):
         "discount": discount,
         "total": final_total,
         "status": "nuevo",
+        "confirmation_status": "pendiente",
+        "no_show": False,
     })
 
     try:
@@ -307,10 +349,124 @@ def _handle_create_order(payload):
     except Exception as e:  # never block the order over this
         print(f"Customer upsert failed: {e}")
 
-    _notify_telegram(order_id, name, phone, address, clean_items, final_total, notes)
-    _notify_whatsapp(phone, name)
+    _notify_new_order_telegram(order_id, name, phone, address, clean_items, final_total, notes)
+    _send_confirmation_request(phone, name, clean_items, final_total)
 
     return _response(201, {"ok": True, "order_id": order_id, "total": final_total})
+
+
+def _validate_twilio_signature(url, params, signature):
+    if not signature or not TWILIO_AUTH_TOKEN:
+        return False
+    s = url
+    for key in sorted(params.keys()):
+        s += key + params[key]
+    computed = base64.b64encode(
+        hmac.new(TWILIO_AUTH_TOKEN.encode(), s.encode(), hashlib.sha1).digest()
+    ).decode()
+    return hmac.compare_digest(computed, signature)
+
+
+def _find_pending_order(phone):
+    res = orders_table.query(
+        IndexName="phone-index",
+        KeyConditionExpression=Key("phone").eq(phone),
+        ScanIndexForward=False,  # most recent first
+        Limit=10,
+    )
+    for item in res.get("Items", []):
+        if item.get("confirmation_status") == "pendiente":
+            return item
+    return None
+
+
+def _handle_whatsapp_webhook(event):
+    raw_body = event.get("body") or ""
+    if event.get("isBase64Encoded"):
+        raw_body = base64.b64decode(raw_body).decode()
+
+    params = {k: v[0] for k, v in urllib.parse.parse_qs(raw_body).items()}
+
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+    signature = headers.get("x-twilio-signature", "")
+
+    if WEBHOOK_PUBLIC_URL and not _validate_twilio_signature(WEBHOOK_PUBLIC_URL, params, signature):
+        print("Invalid Twilio signature, ignoring the message")
+        return {"statusCode": 403, "headers": {"Content-Type": "text/plain"}, "body": "Forbidden"}
+
+    from_raw = params.get("From", "")
+    phone = from_raw.replace("whatsapp:", "").strip()
+    body_text = (params.get("Body") or "").strip().lower()
+    # strips simple accents so "sí" -> "si"
+    body_text = body_text.replace("í", "i").replace("á", "a")
+
+    if not phone:
+        return _twiml_response("No pudimos leer tu número. Contáctanos directamente.")
+
+    order = _find_pending_order(phone)
+    if not order:
+        return _twiml_response("No encontramos un pedido pendiente de confirmar a tu nombre.")
+
+    if body_text in YES_WORDS:
+        orders_table.update_item(
+            Key={"order_id": order["order_id"]},
+            UpdateExpression="SET confirmation_status = :s, confirmed_at = :now",
+            ExpressionAttributeValues={":s": "confirmado", ":now": datetime.now(timezone.utc).isoformat()},
+        )
+        _notify_telegram(f"✅ Cliente *confirmó* el pedido #{order['order_id'][:8]} ({order.get('name','')})")
+        return _twiml_response("¡Gracias! Tu pedido quedó confirmado. Te lo llevamos pronto 🌿")
+
+    if body_text in NO_WORDS:
+        orders_table.update_item(
+            Key={"order_id": order["order_id"]},
+            UpdateExpression="SET confirmation_status = :s, confirmed_at = :now",
+            ExpressionAttributeValues={":s": "cancelado", ":now": datetime.now(timezone.utc).isoformat()},
+        )
+        _notify_telegram(f"❌ Cliente *canceló* el pedido #{order['order_id'][:8]} ({order.get('name','')})")
+        return _twiml_response("Entendido, cancelamos tu pedido. ¡Gracias por avisarnos!")
+
+    return _twiml_response("No entendimos tu respuesta. Por favor responde *SI* para confirmar o *NO* para cancelar.")
+
+
+def _handle_mark_no_show(event):
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+    token = headers.get("x-admin-token", "")
+    if not ADMIN_TOKEN or not hmac.compare_digest(token, ADMIN_TOKEN):
+        return _response(401, {"error": "No autorizado"})
+
+    order_id = (event.get("pathParameters") or {}).get("order_id", "")
+    res = orders_table.get_item(Key={"order_id": order_id})
+    order = res.get("Item")
+    if not order:
+        return _response(404, {"error": "Pedido no encontrado"})
+
+    orders_table.update_item(
+        Key={"order_id": order_id},
+        UpdateExpression="SET no_show = :true",
+        ExpressionAttributeValues={":true": True},
+    )
+
+    phone = order.get("phone")
+    strikes = 0
+    blacklisted = False
+    if phone:
+        res = customers_table.update_item(
+            Key={"phone": phone},
+            UpdateExpression="ADD strikes :one",
+            ExpressionAttributeValues={":one": 1},
+            ReturnValues="UPDATED_NEW",
+        )
+        strikes = int(res["Attributes"]["strikes"])
+        if strikes >= STRIKES_TO_BLACKLIST:
+            blacklisted = True
+            customers_table.update_item(
+                Key={"phone": phone},
+                UpdateExpression="SET blacklisted = :true",
+                ExpressionAttributeValues={":true": True},
+            )
+            _notify_telegram(f"🚫 Cliente {order.get('name','')} ({phone}) puesto en *lista negra* tras {strikes} incumplimientos")
+
+    return _response(200, {"ok": True, "strikes": strikes, "blacklisted": blacklisted})
 
 
 def handler(event, context):
@@ -319,6 +475,12 @@ def handler(event, context):
 
     if method == "OPTIONS":
         return _response(200, {"ok": True})
+
+    if path.endswith("/whatsapp/webhook"):
+        return _handle_whatsapp_webhook(event)
+
+    if path.endswith("/no-show"):
+        return _handle_mark_no_show(event)
 
     try:
         payload = json.loads(event.get("body") or "{}")
