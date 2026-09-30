@@ -31,6 +31,21 @@ output "admin_token" {
   sensitive = true
 }
 
+output "geo_table" {
+  value = module.backend_api.geo_table_name
+}
+
+output "worker_key" {
+  description = "Key for the worker panel. Read with: terraform output -raw worker_key"
+  value       = local.worker_key
+  sensitive   = true
+}
+
+output "panel_url" {
+  description = "Worker panel (needs the worker_key)"
+  value       = "${var.domain_active ? "https://${var.domain_name}" : "https://${module.frontend.cloudfront_domain}"}/panel.html"
+}
+
 output "next_step" {
   value = var.domain_active ? "Dominio conectado. El sitio ya responde en https://${var.domain_name}" : "Sitio arriba en la URL de CloudFront. Cuando llegue el correo de AWS confirmando el dominio, pon domain_active=true y vuelve a aplicar."
 }

@@ -11,6 +11,7 @@ data "archive_file" "order_handler" {
   type        = "zip"
   source_dir  = "${path.module}/../../lambda/order_handler"
   output_path = "${path.module}/../../lambda/order_handler.zip"
+  excludes    = ["__pycache__", "__pycache__/*", "*.pyc"]
 }
 
 module "backend_api" {
@@ -27,6 +28,60 @@ module "backend_api" {
   twilio_whatsapp_from = var.twilio_whatsapp_from
   webhook_public_url   = "https://${var.domain_name}/api/whatsapp/webhook"
   admin_token          = random_password.admin_token.result
+
+  worker_key              = local.worker_key
+  telegram_webhook_secret = random_password.telegram_webhook_secret.result
+  telegram_worker_ids     = var.telegram_worker_ids
+  kitchen_lat             = var.kitchen_lat
+  kitchen_lng             = var.kitchen_lng
+  delivery_slots          = var.delivery_slots
+  prep_minutes            = var.prep_minutes
+  slot_lead_minutes       = var.slot_lead_minutes
+  site_url                = var.domain_active ? "https://${var.domain_name}" : ""
+}
+
+# The single shared key for the worker panel (panel.html). Generated on its own,
+# lowercase + digits so it is easy to type on a phone. Read it with:
+#   terraform output -raw worker_key
+# To choose your own, set worker_key in terraform.tfvars.
+resource "random_password" "worker_key" {
+  length  = 12
+  special = false
+  upper   = false
+}
+
+locals {
+  worker_key = var.worker_key != "" ? var.worker_key : random_password.worker_key.result
+}
+
+# Secret Telegram must send back on every webhook call, so nobody else can
+# post fake rider locations.
+resource "random_password" "telegram_webhook_secret" {
+  length  = 40
+  special = false
+}
+
+# Tells Telegram where to send the rider's live location. Runs from YOUR
+# machine (needs internet + curl, like the CloudFront invalidation below) and
+# only again if the URL, the secret or the bot token changes. Note: a bot with a
+# webhook set cannot also be polled with getUpdates.
+resource "null_resource" "telegram_webhook" {
+  count = nonsensitive(var.telegram_bot_token != "") ? 1 : 0
+
+  triggers = {
+    url    = "${module.backend_api.api_endpoint}/api/telegram/webhook"
+    secret = sha256(random_password.telegram_webhook_secret.result)
+    token  = sha256(var.telegram_bot_token)
+  }
+
+  provisioner "local-exec" {
+    command = "curl -fsS -X POST \"https://api.telegram.org/bot$TG_TOKEN/setWebhook\" --data-urlencode \"url=$TG_URL\" --data-urlencode \"secret_token=$TG_SECRET\" --data-urlencode 'allowed_updates=[\"message\",\"edited_message\"]' --data-urlencode drop_pending_updates=true && echo"
+    environment = {
+      TG_TOKEN  = var.telegram_bot_token
+      TG_URL    = "${module.backend_api.api_endpoint}/api/telegram/webhook"
+      TG_SECRET = random_password.telegram_webhook_secret.result
+    }
+  }
 }
 
 # Token for admin actions (e.g. marking a "no-show"). Generated on its own --
@@ -85,16 +140,17 @@ resource "aws_route53_record" "www" {
 # is what makes Terraform re-upload only what actually changed.
 locals {
   content_types = {
-    ".html" = "text/html"
-    ".css"  = "text/css"
-    ".js"   = "application/javascript"
-    ".json" = "application/json"
-    ".png"  = "image/png"
-    ".jpg"  = "image/jpeg"
-    ".jpeg" = "image/jpeg"
-    ".svg"  = "image/svg+xml"
-    ".webp" = "image/webp"
-    ".ico"  = "image/x-icon"
+    ".html"        = "text/html"
+    ".css"         = "text/css"
+    ".js"          = "application/javascript"
+    ".json"        = "application/json"
+    ".png"         = "image/png"
+    ".jpg"         = "image/jpeg"
+    ".jpeg"        = "image/jpeg"
+    ".svg"         = "image/svg+xml"
+    ".webp"        = "image/webp"
+    ".ico"         = "image/x-icon"
+    ".webmanifest" = "application/manifest+json"
   }
   site_files = fileset("${path.module}/../../site", "**/*")
 }

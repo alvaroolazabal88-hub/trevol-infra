@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi pedido — TREVol</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1B2B">
+<style>
+:root{--navy:#0B1B2B;--moss:#16241A;--lime:#7ED321;--card:#132436;--ink:#F3F7F2;--ink-dim:#B9C6BE;--cup:#5C7268;--danger:#E0554B;--amber:#F0A23A;--radius:16px;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,var(--navy) 0%,var(--navy) 35%,var(--moss) 100%);color:var(--ink);min-height:100vh;padding-bottom:40px;}
+a{color:var(--lime);}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:14px 16px;background:rgba(11,27,43,.86);backdrop-filter:blur(8px);border-bottom:1px solid rgba(126,211,33,.15);}
+header .logo{width:30px;height:30px;}
+header h1{font-size:1.2rem;margin:0;font-weight:800;letter-spacing:.5px;flex:1;}
+header h1 span{color:var(--lime);}
+header a.back{font-size:.78rem;font-weight:700;text-decoration:none;color:var(--ink-dim);}
+main{max-width:520px;margin:0 auto;padding:16px 14px;}
+.card{background:var(--card);border:1px solid rgba(126,211,33,.12);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+.hello{font-size:.85rem;color:var(--ink-dim);margin:2px 2px 12px;}
+.eta{text-align:center;padding:22px 16px;}
+.eta .big{font-size:2.3rem;font-weight:800;color:var(--lime);line-height:1.1;}
+.eta .mid{font-size:1.05rem;font-weight:700;margin-top:4px;}
+.eta .sub{font-size:.8rem;color:var(--ink-dim);margin-top:8px;line-height:1.45;}
+.eta.done .big{font-size:1.6rem;}
+.eta.bad .big{color:var(--danger);font-size:1.5rem;}
+.tag{display:inline-block;font-size:.66rem;font-weight:800;letter-spacing:.4px;padding:3px 9px;border-radius:20px;margin-top:10px;}
+.tag.live{background:rgba(126,211,33,.16);color:var(--lime);}
+.tag.est{background:rgba(240,162,58,.16);color:var(--amber);}
+.steps{display:flex;justify-content:space-between;position:relative;margin:4px 0 2px;}
+.steps:before{content:"";position:absolute;left:8%;right:8%;top:13px;height:3px;background:rgba(255,255,255,.12);}
+.step{position:relative;flex:1;text-align:center;font-size:.62rem;color:var(--cup);font-weight:700;}
+.step i{display:block;width:28px;height:28px;border-radius:50%;margin:0 auto 6px;background:var(--navy);border:3px solid rgba(255,255,255,.18);position:relative;z-index:1;}
+.step.on{color:var(--ink);}
+.step.on i{background:var(--lime);border-color:var(--lime);}
+.step.now i{box-shadow:0 0 0 5px rgba(126,211,33,.25);}
+.step small{display:block;font-weight:500;color:var(--ink-dim);margin-top:2px;font-size:.6rem;}
+#map{display:none;height:260px;border-radius:12px;overflow:hidden;border:1px solid rgba(126,211,33,.3);}
+#map.show{display:block;}
+.maplegend{display:none;font-size:.72rem;color:var(--ink-dim);margin-top:8px;text-align:center;}
+.maplegend.show{display:block;}
+h3{margin:0 0 10px;font-size:.78rem;text-transform:uppercase;letter-spacing:.7px;color:var(--lime);}
+.items div{display:flex;justify-content:space-between;font-size:.86rem;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.items div:last-child{border-bottom:none;}
+.total{display:flex;justify-content:space-between;margin-top:8px;padding-top:10px;border-top:1px solid rgba(126,211,33,.2);font-weight:800;}
+.total b{color:var(--lime);}
+.note{font-size:.72rem;color:var(--ink-dim);text-align:center;margin-top:6px;line-height:1.5;}
+.offline{display:none;background:rgba(240,162,58,.15);border:1px solid var(--amber);color:var(--amber);font-size:.75rem;padding:8px 12px;border-radius:10px;margin-bottom:10px;text-align:center;}
+.offline.show{display:block;}
+.center{text-align:center;padding:40px 10px;color:var(--ink-dim);}
+.btn{display:inline-block;background:var(--lime);color:#0B1B2B;font-weight:800;text-decoration:none;border-radius:14px;padding:12px 20px;margin-top:14px;}
+</style>
+</head>
+<body>
+<header>
+  <svg class="logo" viewBox="0 0 100 100" fill="none">
+    <path d="M50 46 C50 46 35 20 18 30 C4 38 8 60 26 62 C36 63 46 55 50 46Z" fill="#7ED321"/>
+    <path d="M50 46 C50 46 65 20 82 30 C96 38 92 60 74 62 C64 63 54 55 50 46Z" fill="#6ABF1A"/>
+    <path d="M50 46 C50 46 58 22 50 8 C42 22 50 46 50 46Z" fill="#8FDB3A"/>
+  </svg>
+  <h1>TRE<span>V</span>ol</h1>
+  <a class="back" href="/">Menú</a>
+</header>
+<main id="root"><div class="center">Cargando tu pedido…</div></main>
+
+<script>
+(function(){
+"use strict";
+var q = new URLSearchParams(location.search);
+var OID = q.get("o") || "", TOK = q.get("t") || "";
+var root = document.getElementById("root");
+var skew = 0;            // server_time - reloj del telefono: la hora mostrada no depende de que el reloj del telefono este bien
+var last = null, map = null, timer = null, failCount = 0, finished = false;
+
+var STEPS = [["nuevo","Recibido"],["preparando","Preparando"],["listo","Listo"],["en_camino","En camino"],["entregado","Entregado"]];
+var fmtTime = (function(){
+  try { var f = new Intl.DateTimeFormat("es-CU", {hour:"numeric", minute:"2-digit", hour12:true, timeZone:"America/Havana"});
+        return function(sec){ return f.format(new Date(sec*1000)); }; }
+  catch(e){ return function(sec){ var d = new Date(sec*1000); return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0"); }; }
+})();
+function esc(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function nowSec(){ return Date.now()/1000 + skew; }
+function fmt(n){ return Number(n).toLocaleString("es-CU"); }
+
+function clearStored(){ try { localStorage.removeItem("trevol_track"); } catch(e){} }
+
+function etaCard(d){
+  var e = d.eta, st = d.status;
+  if (st === "entregado") return '<div class="card eta done"><div class="big">¡Entregado! 🌿</div><div class="sub">Gracias por pedir en TREVol. Que lo disfrutes.</div></div>';
+  if (st === "cancelado") return '<div class="card eta bad"><div class="big">Pedido cancelado</div><div class="sub">Si fue un error, escríbenos y lo resolvemos.</div></div>';
+  if (st === "en_camino" && e && e.eta){
+    var mins = Math.max(0, Math.round((e.eta - nowSec())/60));
+    var when = mins <= 1 ? "Llega en un momento" : "Llega en unos " + mins + " min";
+    var before = e.before > 0 ? "Antes que el tuyo hay " + e.before + (e.before === 1 ? " entrega" : " entregas") + " en el mismo recorrido." : "Eres la próxima entrega.";
+    var live = e.mode === "gps";
+    return '<div class="card eta"><div class="big">' + fmtTime(e.eta) + '</div><div class="mid">' + when + '</div>' +
+      '<span class="tag ' + (live ? "live" : "est") + '">' + (live ? "● SEGUIMIENTO EN VIVO" : "HORA ESTIMADA") + '</span>' +
+      '<div class="sub">' + before + '</div></div>';
+  }
+  if (e && e.mode === "slot"){
+    var dayTxt = d.delivery_day === todayStr() ? "hoy" : "mañana";
+    return '<div class="card eta"><div class="mid">Entrega programada</div><div class="big" style="font-size:1.6rem">' + esc(d.slot_label) + '</div>' +
+      '<div class="sub">' + dayTxt + '. Te lo llevamos dentro de esa franja; cuando salga, aquí verás la hora exacta.</div></div>';
+  }
+  if (e && e.eta){
+    var lo = e.eta - 5*60, hi = e.eta + 10*60;
+    return '<div class="card eta"><div class="mid">Llega aproximadamente entre</div><div class="big" style="font-size:1.9rem">' + fmtTime(lo) + ' – ' + fmtTime(hi) + '</div>' +
+      '<span class="tag est">ESTIMADO</span><div class="sub">Cuando el repartidor salga, la hora se afina y podrás verlo en el mapa.</div></div>';
+  }
+  return '<div class="card eta"><div class="mid">Estamos con tu pedido</div></div>';
+}
+function todayStr(){ try { return new Intl.DateTimeFormat("en-CA", {timeZone:"America/Havana"}).format(new Date(nowSec()*1000)); } catch(e){ return ""; } }
+
+function stepsCard(d){
+  var idx = -1;
+  STEPS.forEach(function(s, i){ if (s[0] === d.status) idx = i; });
+  if (d.status === "cancelado") return "";
+  var html = '<div class="card"><div class="steps">' + STEPS.map(function(s, i){
+    var t = d.times && d.times[s[0]] ? fmtTime(Date.parse(d.times[s[0]])/1000) : (s[0] === "nuevo" && d.created_at ? fmtTime(Date.parse(d.created_at)/1000) : "");
+    return '<div class="step ' + (i <= idx ? "on" : "") + (i === idx ? " now" : "") + '"><i></i>' + s[1] + (t && i <= idx ? '<small>' + t + '</small>' : '') + '</div>';
+  }).join("") + '</div></div>';
+  return html;
+}
+
+function itemsCard(d){
+  return '<div class="card items"><h3>Tu pedido</h3>' +
+    d.items.map(function(i){ return '<div><span>' + i.qty + '× ' + esc(i.name) + '</span></div>'; }).join("") +
+    '<div class="total"><span>Total a pagar al recibir</span><b>' + fmt(d.total) + ' CUP</b></div></div>';
+}
+
+var built = false;
+function build(){
+  root.innerHTML = '<div class="offline" id="off">Sin conexión. Reintentando…</div><div id="top"></div>' +
+    '<div class="card" id="mapCard" style="display:none"><div id="map"></div><div class="maplegend" id="legend"></div></div>' +
+    '<div id="items"></div><div class="note">Esta página se actualiza sola. Pago en efectivo al recibir.</div>';
+  built = true;
+}
+function render(d){
+  if (!built) build();
+  document.getElementById("top").innerHTML = '<div class="hello">Hola, ' + esc(d.name) + ' 👋</div>' + etaCard(d) + stepsCard(d);
+  document.getElementById("items").innerHTML = itemsCard(d);
+  showMap(d);
+}
+
+function loadTMap(cb){
+  if (window.TMap) return cb();
+  var s = document.createElement("script"); s.src = "/tmap.js"; s.onload = cb; s.onerror = function(){};
+  document.head.appendChild(s);
+}
+var mapPending = false;
+function showMap(d){
+  var card = document.getElementById("mapCard"), el = document.getElementById("map");
+  if (!(d.status === "en_camino" && d.rider && d.pin)) {
+    card.style.display = "none";
+    if (map){ map.destroy(); map = null; }
+    return;
+  }
+  card.style.display = "block"; el.classList.add("show");
+  var lg = document.getElementById("legend"); lg.classList.add("show");
+  lg.textContent = "🛵 repartidor" + (d.rider.age > 60 ? " (última posición hace " + Math.round(d.rider.age/60) + " min)" : " (en vivo)") + "  ·  📍 tu entrega";
+  function apply(){
+    var fresh = !map;
+    if (fresh) map = TMap.create(el, {lat: d.pin.lat, lng: d.pin.lng, zoom: 15});
+    map.setMarker("dest", d.pin.lat, d.pin.lng, {bottom:true, html:'<div class="tm-dest" style="font-size:26px;line-height:26px">📍</div>'});
+    map.setMarker("rider", d.rider.lat, d.rider.lng, {html:'<div class="tm-dot"></div>'});
+    if (fresh) map.fitBounds([[d.pin.lat, d.pin.lng], [d.rider.lat, d.rider.lng]], 50);   // luego no se mueve la vista: el cliente puede explorar
+  }
+  if (window.TMap) apply();
+  else if (!mapPending){ mapPending = true; loadTMap(function(){ mapPending = false; if (last && last.status === "en_camino" && last.rider) showMap(last); }); }
+}
+
+function tick(){
+  clearTimeout(timer);
+  if (finished) return;
+  var ctl = ("AbortController" in window) ? new AbortController() : null;
+  var to = setTimeout(function(){ if (ctl) ctl.abort(); }, 10000);
+  fetch("/api/track/" + encodeURIComponent(OID) + "?t=" + encodeURIComponent(TOK), ctl ? {signal: ctl.signal} : {})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      clearTimeout(to); failCount = 0;
+      var offEl = document.getElementById("off"); if (offEl) offEl.classList.remove("show");
+      if (!d.found){
+        finished = true; clearStored(); built = false;
+        root.innerHTML = '<div class="center"><h2>No encontramos este pedido</h2><p>Revisa el enlace o vuelve al menú.</p><a class="btn" href="/">Ir al menú</a></div>';
+        return;
+      }
+      skew = d.server_ts - Date.now()/1000;
+      last = d;
+      render(d);
+      if (d.status === "entregado" || d.status === "cancelado"){ finished = true; clearStored(); return; }
+      schedule(d);
+    })
+    .catch(function(){
+      clearTimeout(to); failCount++;
+      var off = document.getElementById("off"); if (off) off.classList.add("show");
+      if (!last){ built = false; root.innerHTML = '<div class="center">No pudimos cargar tu pedido. Reintentando…</div>'; }
+      schedule(last);
+    });
+}
+function schedule(d){
+  var ms = d && d.status === "en_camino" ? 10000 : 20000;
+  ms = Math.min(ms * Math.pow(1.5, Math.min(failCount, 4)), 60000);
+  clearTimeout(timer);
+  timer = setTimeout(function(){ if (document.hidden) schedule(d); else tick(); }, ms);
+}
+document.addEventListener("visibilitychange", function(){ if (!document.hidden) tick(); });
+// la cuenta regresiva ("en unos 12 min") se refresca cada 30 s sin pedir nada al servidor
+setInterval(function(){ if (last && !document.hidden && !finished) render(last); }, 30000);
+
+if (!OID || !TOK){
+  root.innerHTML = '<div class="center"><h2>Enlace incompleto</h2><p>Abre el enlace completo que te dimos al hacer el pedido.</p><a class="btn" href="/">Ir al menú</a></div>';
+} else tick();
+})();
+</script>
+</body>
+</html>

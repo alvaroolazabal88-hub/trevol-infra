@@ -242,6 +242,32 @@ main{padding:18px 12px 12px;max-width:520px;margin:0 auto;}
 .confirm h2{margin:0 0 8px;}
 .confirm p{color:var(--ink-dim);font-size:.88rem;line-height:1.5;}
 
+/* ---------- ENTREGA: franja, pin y seguimiento ---------- */
+.hint{font-size:.7rem;color:var(--ink-dim);margin-top:5px;line-height:1.4;}
+.geo-line{display:none;font-size:.75rem;line-height:1.4;margin-top:8px;padding:9px 11px;border-radius:10px;background:var(--card);border:1px solid rgba(255,255,255,.1);}
+.geo-line.show{display:block;}
+.geo-line.ok{border-color:rgba(126,211,33,.5);}
+.geo-line.warn{border-color:rgba(240,162,58,.6);}
+.geo-line .lnk{background:none;border:none;color:var(--lime);font-weight:800;font-size:.75rem;padding:0;margin-left:4px;text-decoration:underline;font-family:inherit;}
+.mapbox{display:none;margin-top:8px;}
+.mapbox.show{display:block;}
+#pinMap{height:240px;border-radius:12px;overflow:hidden;border:1px solid rgba(126,211,33,.3);}
+.map-actions{display:flex;gap:8px;margin-top:8px;}
+.map-actions button{flex:1;border-radius:10px;padding:10px 6px;font-size:.78rem;font-weight:700;font-family:inherit;border:1px solid rgba(126,211,33,.4);background:transparent;color:var(--lime);}
+.map-actions button.primary{background:var(--lime);color:#0B1B2B;border-color:var(--lime);font-weight:800;}
+.slot-day{font-size:.66rem;color:var(--cup);font-weight:800;margin:9px 0 6px;text-transform:uppercase;letter-spacing:.6px;}
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chip{background:var(--card);color:var(--ink);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:8px 12px;font-size:.78rem;font-weight:700;font-family:inherit;}
+.chip small{font-weight:500;color:var(--ink-dim);margin-left:3px;}
+.chip.sel{background:var(--lime);color:#0B1B2B;border-color:var(--lime);}
+.chip.sel small{color:#0B1B2B;}
+.chip:disabled{opacity:.4;text-decoration:line-through;}
+.track-pill{position:fixed;left:16px;bottom:22px;z-index:30;display:none;align-items:center;gap:8px;background:var(--navy);color:var(--ink);border:1px solid var(--lime);border-radius:28px;padding:11px 16px;font-size:.8rem;font-weight:800;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.45);}
+.track-pill.show{display:flex;}
+.track-pill .live{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 0 rgba(126,211,33,.7);animation:pulse 1.6s infinite;}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(126,211,33,0);}100%{box-shadow:0 0 0 0 rgba(126,211,33,0);}}
+.btn-link{display:block;text-align:center;text-decoration:none;}
+
 footer{text-align:center;padding:26px 16px 8px;color:var(--ink-dim);font-size:.72rem;opacity:.7;}
 </style>
 </head>
@@ -279,6 +305,8 @@ footer{text-align:center;padding:26px 16px 8px;color:var(--ink-dim);font-size:.7
   <span class="badge" id="cartBadge" style="display:none;">0</span>
 </button>
 
+<a class="track-pill" id="trackPill" href="#"><span class="live"></span><span id="trackPillText">Mi pedido</span></a>
+
 <div class="overlay" id="overlay"></div>
 
 <!-- CART -->
@@ -309,11 +337,26 @@ footer{text-align:center;padding:26px 16px 8px;color:var(--ink-dim);font-size:.7
     </div>
     <div class="field">
       <label>Dirección exacta</label>
-      <input type="text" id="fAddress" maxlength="200" required>
+      <input type="text" id="fAddress" maxlength="200" placeholder="Calle, número, entre qué calles y reparto" autocomplete="street-address" required>
+      <div class="hint">Ej: Maceo #45 e/ Cisneros y Avellaneda, Rpto Garrido</div>
+      <div class="geo-line" id="geoLine"></div>
+      <div class="mapbox" id="mapBox">
+        <div id="pinMap"></div>
+        <div class="hint">Mueve el mapa hasta que el pin quede sobre tu casa.</div>
+        <div class="map-actions">
+          <button type="button" id="btnMyLoc">📡 Estoy aquí</button>
+          <button type="button" class="primary" id="btnPinOk">Este es el lugar ✓</button>
+        </div>
+      </div>
     </div>
     <div class="field">
       <label>Número de teléfono</label>
-      <input type="tel" id="fPhone" maxlength="20" inputmode="tel" required>
+      <input type="tel" id="fPhone" maxlength="24" inputmode="tel" placeholder="5 123 4567" autocomplete="tel" required>
+      <div class="hint">Por si el repartidor necesita llamarte.</div>
+    </div>
+    <div class="field" id="slotField" style="display:none;">
+      <label>¿Cuándo lo quieres?</label>
+      <div id="slotBox"></div>
     </div>
     <div class="field">
       <label>Requerimiento de entrega <span class="opt">(opcional)</span></label>
@@ -342,8 +385,9 @@ footer{text-align:center;padding:26px 16px 8px;color:var(--ink-dim);font-size:.7
       <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#7ED321" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
     </div>
     <h2>¡Pedido enviado!</h2>
-    <p>Ya recibimos tu orden. Te contactamos por teléfono para confirmar el tiempo de entrega. Recuerda: se paga al recibir.</p>
-    <button class="btn-ghost" data-close style="margin-top:18px;">Cerrar</button>
+    <p id="confirmMsg">Ya recibimos tu orden. Recuerda: se paga al recibir.</p>
+    <a class="btn-main btn-link" id="confirmTrack" href="#" style="display:none;">🛵 Seguir mi pedido</a>
+    <button class="btn-ghost" data-close style="margin-top:12px;">Cerrar</button>
   </div>
 </div>
 
@@ -547,6 +591,7 @@ document.getElementById("btnGoCheckout").addEventListener("click", ()=>{
   resetCoupon();
   renderOrderTotals();
   openSheet("checkout");
+  loadConfig().then(renderSlots);
 });
 
 // ---------------------------------------------------------------- CUPON
@@ -617,6 +662,196 @@ document.getElementById("btnApplyCoupon").addEventListener("click", async ()=>{
   }
 });
 
+
+// ---------------------------------------------------------------- ENTREGA: franja, pin, telefono
+const CONFIG_URL = "/api/config";
+const GEOCODE_URL = "/api/geocode";
+let cfg = null, cfgAt = 0;
+let slotSel = {day:null, slot:"asap"};
+let pin = null;          // {lat,lng,confirmed}: solo se envia si el cliente lo marco
+let geoGuess = null;     // estimacion del servidor a partir del texto de la direccion
+let map = null, mapReady = false, lastCenter = null, geoTimer = null;
+
+async function loadConfig(){
+  if (cfg && Date.now() - cfgAt < 60000) return cfg;
+  try{
+    const r = await fetch(CONFIG_URL);
+    if (r.ok){ cfg = await r.json(); cfgAt = Date.now(); }
+  }catch(e){}
+  return cfg;
+}
+
+function slotChip(day, id, label, hours, closed){
+  const sel = slotSel.day === day && slotSel.slot === id;
+  return `<button type="button" class="chip ${sel ? "sel" : ""}" data-day="${day}" data-slot="${id}" ${closed ? "disabled" : ""}>${label}${hours ? `<small>${hours}</small>` : ""}</button>`;
+}
+function renderSlots(){
+  const field = document.getElementById("slotField");
+  if (!cfg){ field.style.display = "none"; slotSel = {day:null, slot:"asap"}; return; }
+  const valid = (d, s) => s === "asap" ? d === cfg.today : (cfg.slots.some(x => x.id === s && (d === cfg.tomorrow || x.open_today)));
+  if (!slotSel.day || !valid(slotSel.day, slotSel.slot)) slotSel = {day: cfg.today, slot: "asap"};
+  const hours = x => `${x.start}–${x.end}`;
+  const today = slotChip(cfg.today, "asap", "Lo antes posible", "", false) +
+    cfg.slots.map(x => slotChip(cfg.today, x.id, x.label, hours(x), !x.open_today)).join("");
+  const tomorrow = cfg.slots.map(x => slotChip(cfg.tomorrow, x.id, x.label, hours(x), false)).join("");
+  document.getElementById("slotBox").innerHTML =
+    `<div class="slot-day" style="margin-top:0">Hoy</div><div class="chips">${today}</div>` +
+    (tomorrow ? `<div class="slot-day">Mañana</div><div class="chips">${tomorrow}</div>` : "");
+  field.style.display = "block";
+}
+document.getElementById("slotBox").addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b || b.disabled) return;
+  slotSel = {day: b.dataset.day, slot: b.dataset.slot};
+  renderSlots();
+});
+
+// ---- telefono: acepta "5 123 4567", "+53 5123-4567", "(53) 51234567"...
+function phoneDigits(raw){ return String(raw || "").replace(/\D/g, ""); }
+function phoneLooksValid(raw){
+  const d = phoneDigits(raw);
+  return d.length >= 8 && d.length <= 15;
+}
+
+// ---- pin: estimacion automatica + ajuste en el mapa
+function lineEl(){ return document.getElementById("geoLine"); }
+function renderGeoLine(){
+  const el = lineEl();
+  const addr = document.getElementById("fAddress").value.trim();
+  el.className = "geo-line";
+  if (pin && pin.confirmed){
+    el.className = "geo-line show ok";
+    el.innerHTML = `✅ Ubicación marcada en el mapa. <button type="button" class="lnk" data-map>Cambiar</button>`;
+    return;
+  }
+  if (addr.length < 6){ el.innerHTML = ""; return; }
+  if (geoGuess && geoGuess.lat != null && geoGuess.conf >= 0.7){
+    el.className = "geo-line show ok";
+    el.innerHTML = `📍 Creemos que es: <b>${escapeHtml(geoGuess.label)}</b>. <button type="button" class="lnk" data-map>Ver en el mapa</button>`;
+  } else if (geoGuess && geoGuess.lat != null){
+    el.className = "geo-line show warn";
+    el.innerHTML = `📍 Solo ubicamos <b>${escapeHtml(geoGuess.label)}</b>. Marca el punto exacto para que lleguemos más rápido. <button type="button" class="lnk" data-map>Marcar en el mapa</button>`;
+  } else {
+    el.className = "geo-line show warn";
+    el.innerHTML = `No pudimos ubicar la dirección sola. Marca tu casa en el mapa (recomendado). <button type="button" class="lnk" data-map>Marcar en el mapa</button>`;
+  }
+}
+function escapeHtml(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+document.getElementById("fAddress").addEventListener("input", () => {
+  clearTimeout(geoTimer);
+  geoTimer = setTimeout(guessAddress, 800);
+  if (!(pin && pin.confirmed)) renderGeoLine();
+});
+async function guessAddress(){
+  const addr = document.getElementById("fAddress").value.trim();
+  if (addr.length < 6){ geoGuess = null; renderGeoLine(); return; }
+  try{
+    const r = await fetch(GEOCODE_URL, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({address: addr})});
+    const d = await r.json();
+    if (document.getElementById("fAddress").value.trim() !== addr) return; // ya cambio: respuesta vieja
+    geoGuess = (r.ok && d.lat != null) ? d : null;
+  }catch(e){ geoGuess = null; }
+  renderGeoLine();
+  if (map && !(pin && pin.confirmed) && geoGuess) recenter(geoGuess.lat, geoGuess.lng, geoGuess.conf >= 0.7 ? 17 : 15);
+}
+lineEl().addEventListener("click", e => { if (e.target.closest("[data-map]")) openMap(); });
+
+function loadTMap(){
+  return new Promise((resolve, reject) => {
+    if (window.TMap) return resolve();
+    const sc = document.createElement("script");
+    sc.src = "/tmap.js";
+    sc.onload = resolve; sc.onerror = () => reject(new Error("mapa"));
+    document.head.appendChild(sc);
+  });
+}
+function metersBetween(a, b){
+  const dy = (a.lat - b.lat) * 110540, dx = (a.lng - b.lng) * 111320 * Math.cos(a.lat * Math.PI / 180);
+  return Math.hypot(dx, dy);
+}
+function recenter(lat, lng, z){
+  mapReady = false;
+  map.setView(lat, lng, z);
+  lastCenter = {lat, lng};
+  setTimeout(() => { mapReady = true; }, 150);
+}
+async function openMap(){
+  const box = document.getElementById("mapBox");
+  box.classList.add("show");
+  try{ await loadTMap(); }catch(e){
+    box.classList.remove("show");
+    lineEl().className = "geo-line show warn";
+    lineEl().textContent = "No se pudo cargar el mapa. Puedes seguir: escribe bien la dirección y te llamamos si hace falta.";
+    return;
+  }
+  const c = await loadConfig();
+  const start = (pin && pin.confirmed) ? {lat: pin.lat, lng: pin.lng, z: 17}
+    : geoGuess && geoGuess.lat != null ? {lat: geoGuess.lat, lng: geoGuess.lng, z: geoGuess.conf >= 0.7 ? 17 : 15}
+    : c && c.center ? {lat: c.center.lat, lng: c.center.lng, z: 14} : {lat: 21.3808, lng: -77.9169, z: 14};
+  if (!map){
+    map = TMap.create(document.getElementById("pinMap"), {
+      lat: start.lat, lng: start.lng, zoom: start.z, centerPin: true,
+      onMove: ctr => {
+        if (!mapReady || !lastCenter || metersBetween(ctr, lastCenter) < 8) return;  // un zoom no mueve el centro
+        lastCenter = ctr;
+        pin = {lat: ctr.lat, lng: ctr.lng, confirmed: true};
+        renderGeoLine();
+      },
+    });
+    lastCenter = {lat: start.lat, lng: start.lng};
+    setTimeout(() => { mapReady = true; }, 300);
+  } else {
+    map.resize();
+    recenter(start.lat, start.lng, start.z);
+  }
+}
+document.getElementById("btnPinOk").addEventListener("click", () => {
+  if (!map) return;
+  const ctr = map.getCenter();
+  pin = {lat: ctr.lat, lng: ctr.lng, confirmed: true};
+  document.getElementById("mapBox").classList.remove("show");
+  renderGeoLine();
+});
+document.getElementById("btnMyLoc").addEventListener("click", () => {
+  if (!navigator.geolocation || !map) return;
+  const b = document.getElementById("btnMyLoc");
+  b.disabled = true; b.textContent = "Buscando…";
+  navigator.geolocation.getCurrentPosition(pos => {
+    b.disabled = false; b.textContent = "📡 Estoy aquí";
+    recenter(pos.coords.latitude, pos.coords.longitude, 18);
+    pin = {lat: pos.coords.latitude, lng: pos.coords.longitude, confirmed: true};
+    renderGeoLine();
+  }, () => {
+    b.disabled = false; b.textContent = "📡 Estoy aquí";
+    alert("No pudimos obtener tu ubicación. Mueve el mapa hasta tu casa.");
+  }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 30000});
+});
+
+// ---- "Mi pedido": recuerda el ultimo pedido para volver a ver su estado
+const TRACK_KEY = "trevol_track";
+function readTrack(){ try{ return JSON.parse(localStorage.getItem(TRACK_KEY) || "null"); }catch(e){ return null; } }
+function writeTrack(v){ try{ if (v) localStorage.setItem(TRACK_KEY, JSON.stringify(v)); else localStorage.removeItem(TRACK_KEY); }catch(e){} }
+function trackHref(t){ return `/seguir.html?o=${encodeURIComponent(t.o)}&t=${encodeURIComponent(t.t)}`; }
+const STATUS_SHORT = {nuevo:"Pedido recibido", preparando:"Preparando tu pedido", listo:"Listo para salir", en_camino:"En camino"};
+async function refreshPill(){
+  const pill = document.getElementById("trackPill");
+  const t = readTrack();
+  pill.classList.remove("show");
+  if (!t) return;
+  if (Date.now() - t.at > 36 * 3600 * 1000){ writeTrack(null); return; }
+  pill.href = trackHref(t);
+  let text = "Mi pedido";
+  try{
+    const r = await fetch(`/api/track/${encodeURIComponent(t.o)}?t=${encodeURIComponent(t.t)}`);
+    const d = await r.json();
+    if (!d.found || d.status === "entregado" || d.status === "cancelado"){ writeTrack(null); return; }
+    text = STATUS_SHORT[d.status] || text;
+  }catch(e){}
+  document.getElementById("trackPillText").textContent = "🛵 " + text;
+  pill.classList.add("show");
+}
+
 // ---------------------------------------------------------------- CHECKOUT
 document.getElementById("checkoutForm").addEventListener("submit", async e=>{
   e.preventDefault();
@@ -631,6 +866,11 @@ document.getElementById("checkoutForm").addEventListener("submit", async e=>{
 
   if (!name || !address || !phone){
     errEl.textContent = "Completa nombre, dirección y teléfono.";
+    errEl.classList.add("show");
+    return;
+  }
+  if (!phoneLooksValid(phone)){
+    errEl.textContent = "Revisa el teléfono: escribe los 8 números, por ejemplo 5 123 4567.";
     errEl.classList.add("show");
     return;
   }
@@ -656,16 +896,21 @@ document.getElementById("checkoutForm").addEventListener("submit", async e=>{
       body: JSON.stringify({
         name, alias, address, phone, notes, items, order_summary: summary,
         coupon_code: appliedCoupon ? appliedCoupon.code : "",
+        slot: cfg ? slotSel.slot : undefined,
+        day: cfg ? slotSel.day : undefined,
+        pin: pin && pin.confirmed ? {lat: pin.lat, lng: pin.lng, confirmed: true} : undefined,
       }),
     });
+    const data = await res.json().catch(()=>({}));
     if (!res.ok){
-      const data = await res.json().catch(()=>({}));
       throw new Error(data.error || "No se pudo enviar el pedido");
     }
     cart = {}; saveCart(); renderCartUI();
     document.getElementById("checkoutForm").reset();
     resetCoupon();
-    openSheet("confirm");
+    pin = null; geoGuess = null; renderGeoLine();
+    document.getElementById("mapBox").classList.remove("show");
+    showConfirmation(data);
   }catch(err){
     errEl.textContent = err.message || "Error de conexión. Intenta de nuevo.";
     errEl.classList.add("show");
@@ -674,8 +919,25 @@ document.getElementById("checkoutForm").addEventListener("submit", async e=>{
   }
 });
 
+function showConfirmation(data){
+  const when = data.slot && data.slot !== "asap" ? `para <b>${escapeHtml(data.slot_label)}</b> (${data.delivery_day === (cfg && cfg.tomorrow) ? "mañana" : "hoy"})` : "y lo preparamos lo antes posible";
+  document.getElementById("confirmMsg").innerHTML = `Ya recibimos tu pedido ${when}. Te avisamos si hay algún problema. Recuerda: se paga al recibir.`;
+  const link = document.getElementById("confirmTrack");
+  if (data.order_id && data.track_token){
+    const t = {o: data.order_id, t: data.track_token, at: Date.now()};
+    writeTrack(t);
+    link.href = trackHref(t);
+    link.style.display = "block";
+    refreshPill();
+  } else {
+    link.style.display = "none";
+  }
+  openSheet("confirm");
+}
+
 loadCart();
 renderCartUI();
+refreshPill();
 })();
 </script>
 </body>
