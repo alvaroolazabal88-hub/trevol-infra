@@ -140,16 +140,16 @@ resource "aws_route53_record" "www" {
 # is what makes Terraform re-upload only what actually changed.
 locals {
   content_types = {
-    ".html" = "text/html"
-    ".css"  = "text/css"
-    ".js"   = "application/javascript"
-    ".json" = "application/json"
-    ".png"  = "image/png"
-    ".jpg"  = "image/jpeg"
-    ".jpeg" = "image/jpeg"
-    ".svg"  = "image/svg+xml"
-    ".webp" = "image/webp"
-    ".ico"  = "image/x-icon"
+    ".html"        = "text/html"
+    ".css"         = "text/css"
+    ".js"          = "application/javascript"
+    ".json"        = "application/json"
+    ".png"         = "image/png"
+    ".jpg"         = "image/jpeg"
+    ".jpeg"        = "image/jpeg"
+    ".svg"         = "image/svg+xml"
+    ".webp"        = "image/webp"
+    ".ico"         = "image/x-icon"
     ".webmanifest" = "application/manifest+json"
   }
   site_files = fileset("${path.module}/../../site", "**/*")
