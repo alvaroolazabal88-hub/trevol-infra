@@ -193,6 +193,13 @@ def build_places(places_json):
             c = (el["lat"], el["lon"])
         elif "center" in el:
             c = (el["center"]["lat"], el["center"]["lon"])
+        elif "bounds" in el:
+            # Overpass only honors one geometry modifier from "out center ... bb;"
+            # for ways/relations -- here it's "bb", so fall back to the bounds
+            # midpoint instead of silently dropping every polygon-shaped place
+            # (parks, plazas, big buildings mapped as ways rather than nodes).
+            bb = el["bounds"]
+            c = ((bb["minlat"] + bb["maxlat"]) / 2, (bb["minlon"] + bb["maxlon"]) / 2)
         else:
             continue
         alts = split_names(tags)
