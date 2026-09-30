@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panel — TREVol</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0B1B2B">
+<link rel="manifest" href="/panel.webmanifest">
+<link rel="icon" href="/panel-icon-192.png">
+<link rel="apple-touch-icon" href="/panel-icon-192.png">
+<style>
+:root{--navy:#0B1B2B;--moss:#16241A;--lime:#7ED321;--card:#132436;--card2:#0f1d2c;--ink:#F3F7F2;--dim:#B9C6BE;--cup:#5C7268;--danger:#E0554B;--amber:#F0A23A;--blue:#4EA1F3;--violet:#A98BFF;--radius:14px;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--navy);color:var(--ink);min-height:100vh;font-size:15px;}
+button{font-family:inherit;cursor:pointer;}
+a{color:var(--lime);}
+.hidden{display:none !important;}
+
+/* login */
+#login{max-width:360px;margin:12vh auto 0;padding:24px 20px;text-align:center;}
+#login .logo{width:64px;height:64px;}
+#login h1{margin:8px 0 4px;letter-spacing:.5px;} #login h1 span{color:var(--lime);}
+#login p{color:var(--dim);font-size:.85rem;margin:0 0 16px;}
+#login input{width:100%;padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:var(--card);color:var(--ink);font-size:1.05rem;text-align:center;letter-spacing:1px;}
+#login input:focus{outline:none;border-color:var(--lime);}
+#login .err{color:var(--danger);font-size:.82rem;min-height:1.2em;margin-top:10px;}
+
+/* barra superior */
+.top{position:sticky;top:0;z-index:30;background:rgba(11,27,43,.94);backdrop-filter:blur(8px);border-bottom:1px solid rgba(126,211,33,.18);padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.top .brand{font-weight:800;font-size:1.05rem;letter-spacing:.4px;} .top .brand span{color:var(--lime);}
+.days{display:flex;gap:4px;margin-left:auto;}
+.days button{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--dim);border-radius:18px;padding:6px 12px;font-size:.78rem;font-weight:700;}
+.days button.on{background:var(--lime);color:#0B1B2B;border-color:var(--lime);}
+.conn{font-size:.68rem;color:var(--dim);display:flex;align-items:center;gap:5px;}
+.conn i{width:8px;height:8px;border-radius:50%;background:var(--lime);display:inline-block;}
+.conn.bad i{background:var(--danger);}
+.menu-btn{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--ink);border-radius:10px;width:36px;height:34px;font-size:1.1rem;}
+.menu{position:absolute;right:10px;top:52px;background:var(--card);border:1px solid rgba(126,211,33,.3);border-radius:12px;min-width:250px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:40;overflow:hidden;}
+.menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink);padding:13px 16px;font-size:.88rem;border-bottom:1px solid rgba(255,255,255,.06);}
+.menu button:last-child{border-bottom:none;}
+.menu button small{color:var(--dim);}
+
+.riderbar{margin:10px 12px 0;padding:9px 12px;border-radius:12px;background:var(--card);border:1px solid rgba(255,255,255,.1);font-size:.78rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.riderbar.live{border-color:rgba(126,211,33,.5);}
+.riderbar.stale{border-color:rgba(240,162,58,.6);}
+.riderbar a{margin-left:auto;font-weight:700;font-size:.74rem;}
+.help{margin:8px 12px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px dashed rgba(126,211,33,.4);font-size:.8rem;line-height:1.55;color:var(--dim);}
+.help b{color:var(--ink);}
+
+.stats{display:flex;gap:6px;overflow-x:auto;padding:10px 12px 2px;}
+.stat{flex:0 0 auto;background:var(--card);border-radius:12px;padding:7px 12px;font-size:.7rem;color:var(--dim);border:1px solid rgba(255,255,255,.06);white-space:nowrap;}
+.stat b{display:block;font-size:1.15rem;color:var(--ink);line-height:1.1;}
+.stat.hot b{color:var(--lime);}
+
+.tabs{display:flex;gap:6px;padding:10px 12px 0;}
+.tabs button{flex:1;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:transparent;color:var(--dim);font-weight:800;font-size:.85rem;}
+.tabs button.on{background:var(--card);color:var(--lime);border-color:var(--lime);}
+
+.cols{display:grid;grid-template-columns:1fr;gap:12px;padding:10px 12px 90px;}
+.cols.tab-orders #colRoute{display:none;} .cols.tab-route #colOrders{display:none;}
+@media(min-width:960px){
+  .cols{grid-template-columns:minmax(380px,1fr) minmax(420px,1fr);align-items:start;}
+  .cols.tab-orders #colRoute,.cols.tab-route #colOrders{display:block;}
+  .tabs{display:none;}
+  #colRoute{position:sticky;top:62px;max-height:calc(100vh - 72px);overflow-y:auto;}
+}
+
+/* pedidos */
+.group{margin-bottom:14px;}
+.ghead{display:flex;align-items:center;gap:8px;margin:2px 2px 8px;flex-wrap:wrap;}
+.ghead h2{margin:0;font-size:.95rem;} .ghead .cnt{color:var(--dim);font-size:.75rem;}
+.ghead button{margin-left:auto;background:transparent;border:1px solid rgba(126,211,33,.5);color:var(--lime);border-radius:16px;padding:6px 12px;font-size:.72rem;font-weight:800;}
+.order{background:var(--card);border:1px solid rgba(255,255,255,.07);border-left:5px solid var(--blue);border-radius:var(--radius);padding:12px 13px;margin-bottom:9px;}
+.order.st-preparando{border-left-color:var(--amber);} .order.st-listo{border-left-color:var(--lime);} .order.st-en_camino{border-left-color:var(--violet);}
+.order.st-entregado,.order.st-cancelado{border-left-color:#4a5a52;opacity:.7;}
+.order.new{animation:flash 1.4s ease 3;}
+@keyframes flash{50%{background:#1c3b2a;}}
+.o1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.o1 .id{font-size:.72rem;color:var(--cup);font-weight:700;} .o1 .t{font-size:.72rem;color:var(--dim);}
+.o1 .who{font-weight:800;font-size:1rem;} .o1 .alias{color:var(--dim);font-size:.8rem;}
+.pill{margin-left:auto;font-size:.66rem;font-weight:800;padding:3px 9px;border-radius:12px;background:rgba(78,161,243,.16);color:var(--blue);}
+.st-preparando .pill{background:rgba(240,162,58,.16);color:var(--amber);} .st-listo .pill{background:rgba(126,211,33,.16);color:var(--lime);}
+.st-en_camino .pill{background:rgba(169,139,255,.16);color:var(--violet);} .st-cancelado .pill,.st-entregado .pill{background:rgba(255,255,255,.08);color:var(--dim);}
+.addr{margin:7px 0 4px;font-size:.95rem;font-weight:600;line-height:1.35;}
+.geo{display:inline-block;font-size:.68rem;font-weight:800;border-radius:10px;padding:3px 9px;margin:2px 0 4px;border:none;background:rgba(126,211,33,.15);color:var(--lime);}
+.geo.approx{background:rgba(240,162,58,.16);color:var(--amber);} .geo.bad{background:rgba(224,85,75,.18);color:#ff8a80;}
+.contact{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0;font-size:.82rem;}
+.contact a{text-decoration:none;background:var(--card2);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px 10px;color:var(--ink);}
+.items{font-size:.85rem;margin:6px 0;color:var(--ink);line-height:1.5;}
+.notes{font-size:.8rem;background:rgba(240,162,58,.12);border:1px solid rgba(240,162,58,.4);border-radius:8px;padding:6px 9px;margin:6px 0;color:#ffd9a3;}
+.etaline{font-size:.8rem;color:var(--violet);font-weight:700;margin:4px 0;}
+.total{font-weight:800;color:var(--lime);}
+.acts{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap;}
+.btn{border:none;border-radius:11px;padding:11px 14px;font-weight:800;font-size:.84rem;background:var(--lime);color:#0B1B2B;}
+.btn.sec{background:transparent;color:var(--lime);border:1px solid rgba(126,211,33,.55);}
+.btn.warn{background:transparent;color:#ff8a80;border:1px solid rgba(224,85,75,.6);}
+.btn.dim{background:var(--card2);color:var(--dim);border:1px solid rgba(255,255,255,.12);}
+.btn:disabled{opacity:.5;}
+.btn.big{width:100%;padding:14px;font-size:.95rem;margin-top:10px;}
+details.more{margin-top:8px;} details.more summary{font-size:.75rem;color:var(--dim);cursor:pointer;padding:4px 0;}
+details.more .acts{margin-top:4px;}
+.done-toggle{width:100%;background:var(--card2);border:1px dashed rgba(255,255,255,.15);color:var(--dim);border-radius:12px;padding:10px;font-size:.8rem;margin-bottom:9px;}
+.empty{color:var(--dim);text-align:center;padding:36px 10px;font-size:.9rem;}
+
+/* ruta */
+.panelbox{background:var(--card);border:1px solid rgba(126,211,33,.15);border-radius:var(--radius);padding:12px;margin-bottom:10px;}
+.panelbox h3{margin:0 0 8px;font-size:.78rem;text-transform:uppercase;letter-spacing:.7px;color:var(--lime);}
+#mapWrap{height:340px;border-radius:12px;overflow:hidden;border:1px solid rgba(126,211,33,.25);margin-bottom:10px;}
+.seg{display:flex;gap:6px;margin-bottom:8px;} .seg button{flex:1;padding:9px 6px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--dim);font-size:.78rem;font-weight:700;}
+.seg button.on{background:rgba(126,211,33,.16);color:var(--lime);border-color:var(--lime);}
+.pick{display:flex;align-items:flex-start;gap:9px;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:.84rem;}
+.pick:last-child{border-bottom:none;} .pick input{width:20px;height:20px;margin-top:2px;accent-color:#7ED321;}
+.pick .sub{color:var(--dim);font-size:.74rem;} .pick.nopin{opacity:.6;}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.quick button{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--dim);border-radius:14px;padding:5px 11px;font-size:.72rem;font-weight:700;}
+.stop{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);}
+.stop:last-child{border-bottom:none;}
+.stop .n{flex:0 0 28px;height:28px;border-radius:14px;background:var(--navy);border:2px solid var(--lime);color:var(--lime);font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center;}
+.stop .body{flex:1;min-width:0;} .stop .nm{font-weight:800;} .stop .ad{font-size:.82rem;color:var(--dim);}
+.stop .eta{font-size:.78rem;color:var(--violet);font-weight:700;margin-top:2px;}
+.stop .acts{margin-top:6px;}
+.note{font-size:.72rem;color:var(--dim);margin-top:6px;line-height:1.45;}
+.tm-dot.rider{background:#A98BFF;box-shadow:0 0 0 4px rgba(169,139,255,.5);}
+.dotmk{width:14px;height:14px;border-radius:50%;border:2px solid #0B1B2B;}
+
+/* modales */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;}
+.modal .box{background:var(--navy);border:1px solid rgba(126,211,33,.3);border-radius:18px 18px 0 0;width:100%;max-width:560px;padding:16px;max-height:92vh;overflow-y:auto;}
+@media(min-width:700px){.modal{align-items:center;} .modal .box{border-radius:18px;}}
+.modal h3{margin:0 0 6px;} .modal .sub{color:var(--dim);font-size:.82rem;margin-bottom:10px;line-height:1.4;}
+#pinMap{height:300px;border-radius:12px;overflow:hidden;border:1px solid rgba(126,211,33,.3);}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;} .slotday{font-size:.68rem;color:var(--cup);font-weight:800;text-transform:uppercase;letter-spacing:.6px;margin:8px 0 6px;}
+.chip{background:var(--card);color:var(--ink);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:8px 12px;font-size:.8rem;font-weight:700;} .chip.sel{background:var(--lime);color:#0B1B2B;border-color:var(--lime);}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);border:1px solid var(--lime);color:var(--ink);padding:11px 18px;border-radius:24px;font-size:.85rem;font-weight:700;z-index:80;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:90vw;text-align:center;}
+.toast.err{border-color:var(--danger);color:#ffb3ad;}
+</style>
+</head>
+<body>
+
+<!-- ENTRADA -->
+<div id="login">
+  <svg class="logo" viewBox="0 0 100 100" fill="none">
+    <path d="M50 46 C50 46 35 20 18 30 C4 38 8 60 26 62 C36 63 46 55 50 46Z" fill="#7ED321"/>
+    <path d="M50 46 C50 46 65 20 82 30 C96 38 92 60 74 62 C64 63 54 55 50 46Z" fill="#6ABF1A"/>
+    <path d="M50 46 C50 46 58 22 50 8 C42 22 50 46 50 46Z" fill="#8FDB3A"/>
+    <path d="M50 48 C48 60 46 78 44 94" stroke="#5C8F1D" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </svg>
+  <h1>TRE<span>V</span>ol · Panel</h1>
+  <p>Solo para el equipo. Escribe la clave de trabajo.</p>
+  <form id="loginForm">
+    <input id="keyInput" type="password" autocomplete="current-password" placeholder="Clave" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <div class="err" id="loginErr"></div>
+    <button class="btn big" type="submit">Entrar</button>
+  </form>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <div class="top">
+    <div class="brand">TRE<span>V</span>ol</div>
+    <div class="conn" id="conn"><i></i><span id="connText">…</span></div>
+    <div class="days" id="days">
+      <button data-day="yesterday">Ayer</button><button data-day="today" class="on">Hoy</button><button data-day="tomorrow">Mañana</button>
+    </div>
+    <button class="menu-btn" id="menuBtn" aria-label="Menú">⋯</button>
+    <div class="menu hidden" id="menu">
+      <button id="mKitchen">🍳 Mover punto de fabricación</button>
+      <button id="mGps">📡 GPS de este teléfono <small id="mGpsState">(apagado)</small></button>
+      <button id="mSound">🔔 Sonido de pedidos nuevos <small id="mSoundState">(activado)</small></button>
+      <button id="mLogout">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="riderbar" id="riderBar"></div>
+  <div class="help hidden" id="riderHelp">
+    <b>Ubicación en vivo del repartidor (una vez por viaje):</b><br>
+    1) Abre el chat del bot de TREVol en Telegram.<br>
+    2) Toca el clip 📎 → <b>Ubicación</b> → <b>Compartir mi ubicación en tiempo real</b> → «hasta que la desactive».<br>
+    3) Listo: puedes bloquear el teléfono. Telegram sigue enviando la posición y los clientes ven el avance.<br>
+    Si no comparte ubicación, la hora se calcula igual por el plan y por tus botones <b>Entregué</b>.<br>
+    Si es un repartidor nuevo: que le escriba <b>/start</b> al bot; el bot le dice su id para autorizarlo.
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="tabs"><button data-tab="orders" class="on">📋 Pedidos</button><button data-tab="route">🗺 Ruta y mapa</button></div>
+
+  <div class="cols tab-orders" id="cols">
+    <section id="colOrders"></section>
+    <section id="colRoute">
+      <div id="mapWrap"></div>
+      <div id="routeBox"></div>
+    </section>
+  </div>
+</div>
+
+<div id="modalHost"></div>
+<div id="toastHost"></div>
+
+<script src="/tmap.js"></script>
+<script src="/route.js"></script>
+<script>
+(function(){
+"use strict";
+
+// ---------------------------------------------------------------- utilidades
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? "" : t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtN = n => Number(n || 0).toLocaleString("es-CU");
+let tzFmt;
+try { tzFmt = new Intl.DateTimeFormat("es-CU", {hour:"numeric", minute:"2-digit", hour12:true, timeZone:"America/Havana"}); } catch(e){ tzFmt = null; }
+const fmtClock = sec => tzFmt ? tzFmt.format(new Date(sec * 1000)) : new Date(sec * 1000).toTimeString().slice(0, 5);
+const fmtIso = iso => iso ? fmtClock(Date.parse(iso) / 1000) : "";
+const KEY_STORE = "trevol_worker_key";
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch(e){} }
+
+const STATUS = {nuevo:"Nuevo", preparando:"Preparando", listo:"Listo", en_camino:"En camino", entregado:"Entregado", cancelado:"Cancelado"};
+const PREV = {preparando:"nuevo", listo:"preparando", en_camino:"listo", entregado:"en_camino"};
+const ACTIVE = ["nuevo","preparando","listo","en_camino"];
+const DOT_COLOR = {nuevo:"#4EA1F3", preparando:"#F0A23A", listo:"#7ED321", en_camino:"#A98BFF"};
+
+const S = {
+  key: lsGet(KEY_STORE) || "", dayMode: "today", data: null, skew: 0,
+  known: null, newIds: new Set(), sound: true, sel: new Set(), selTouched: false,
+  plan: null, planBusy: false, routeFrom: "kitchen", tab: "orders",
+  showDone: false, map: null, markers: new Set(), fitOnce: false, geoWatch: null, geoSent: 0,
+  audio: null, tripGeom: null, busy: false, offline: false,
+};
+
+function toast(msg, isErr){
+  const el = document.createElement("div");
+  el.className = "toast" + (isErr ? " err" : ""); el.textContent = msg;
+  $("toastHost").innerHTML = ""; $("toastHost").appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, isErr ? 5000 : 2800);
+}
+function beep(){
+  try {
+    if (!S.sound) return;
+    S.audio = S.audio || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = S.audio;
+    [0, 0.22].forEach((t, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = i ? 1046 : 784; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.2);
+      o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22);
+    });
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+  } catch(e){}
+}
+
+// ---------------------------------------------------------------- API
+async function api(method, path, body){
+  const ctl = ("AbortController" in window) ? new AbortController() : null;
+  const to = setTimeout(() => { if (ctl) ctl.abort(); }, 15000);
+  let res;
+  try {
+    res = await fetch(path, {method, headers: {"Content-Type": "application/json", "X-Worker-Key": S.key}, body: body ? JSON.stringify(body) : undefined, signal: ctl ? ctl.signal : undefined});
+  } finally { clearTimeout(to); }
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401){ logout("Clave incorrecta o cambiada."); throw new Error("401"); }
+  if (!res.ok) throw new Error(data.error || "Error " + res.status);
+  return data;
+}
+
+// ---------------------------------------------------------------- sesion
+function showApp(){ $("login").classList.add("hidden"); $("app").classList.remove("hidden"); }
+function logout(msg){
+  S.key = ""; lsSet(KEY_STORE, null); S.data = null; S.known = null;
+  if (S.geoWatch != null){ navigator.geolocation.clearWatch(S.geoWatch); S.geoWatch = null; }
+  $("app").classList.add("hidden"); $("login").classList.remove("hidden");
+  $("loginErr").textContent = msg || ""; $("keyInput").value = "";
+}
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const k = $("keyInput").value.trim();
+  if (!k) return;
+  S.key = k; $("loginErr").textContent = "Entrando…";
+  try { S.audio = S.audio || new (window.AudioContext || window.webkitAudioContext)(); } catch(_){}
+  try { await refresh(true); lsSet(KEY_STORE, k); $("loginErr").textContent = ""; showApp(); render(); }
+  catch(err){ if (err.message !== "401") $("loginErr").textContent = "No se pudo conectar. Revisa tu internet."; }
+});
+
+// ---------------------------------------------------------------- datos
+function shiftDay(str, delta){
+  const d = new Date(str + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+function dayParam(){
+  const d = S.data;
+  if (S.dayMode === "today" || !d) return "";
+  return "?day=" + (S.dayMode === "tomorrow" ? d.tomorrow : shiftDay(d.today, -1));
+}
+async function refresh(first){
+  if (S.busy && !first){ S.again = true; return; }   // ya hay una consulta en curso: repetir al terminar
+  S.busy = true;
+  try {
+    const d = await api("GET", "/api/panel/orders" + dayParam());
+    S.skew = d.server_ts - Date.now() / 1000;
+    detectNew(d);
+    S.data = d; S.offline = false;
+    if (!S.selTouched) autoSelect();
+    if (!first) render();
+  } catch(e){
+    if (e.message === "401" || first) throw e;
+    S.offline = true; renderConn();
+  } finally {
+    S.busy = false;
+    if (S.again){ S.again = false; refresh().catch(() => {}); }
+  }
+}
+function detectNew(d){
+  const ids = new Set(d.orders.map(o => o.order_id));
+  if (S.known && S.dayMode === "today"){
+    const fresh = d.orders.filter(o => !S.known.has(o.order_id) && o.status === "nuevo");
+    if (fresh.length){
+      fresh.forEach(o => S.newIds.add(o.order_id));
+      beep(); toast("🆕 Nuevo pedido: " + fresh.map(o => o.name).join(", "));
+      setTimeout(() => fresh.forEach(o => S.newIds.delete(o.order_id)), 6000);
+    }
+  }
+  S.known = ids;
+}
+const nowSec = () => Date.now() / 1000 + S.skew;
+const orders = () => (S.data ? S.data.orders : []);
+const byId = id => orders().find(o => o.order_id === id);
+
+// ---------------------------------------------------------------- render general
+function render(){
+  if (!S.data) return;
+  renderConn(); renderRider(); renderStats(); renderOrders(); renderRoute(); drawMap();
+  document.title = (orders().filter(o => o.status === "nuevo").length ? "(" + orders().filter(o => o.status === "nuevo").length + ") " : "") + "Panel — TREVol";
+}
+function renderConn(){
+  const el = $("conn");
+  el.classList.toggle("bad", S.offline);
+  $("connText").textContent = S.offline ? "Sin conexión, reintentando…" : (S.data ? "Actualizado " + fmtClock(nowSec()) : "…");
+}
+function renderRider(){
+  const bar = $("riderBar"), r = S.data.rider;
+  let cls = "riderbar", txt;
+  if (r && r.age <= 240){ cls += " live"; txt = "🛵 <b>Repartidor en vivo</b> (" + (r.src === "telegram" ? "Telegram" : "este panel") + ") · hace " + ageText(r.age); }
+  else if (r){ cls += " stale"; txt = "🛵 Sin señal reciente · última posición hace " + ageText(r.age) + ". La hora sigue por el plan y tus botones."; }
+  else txt = "🛵 Sin ubicación del repartidor. La hora se calcula por el plan y tus botones <b>Entregué</b>.";
+  bar.className = cls;
+  bar.innerHTML = "<span>" + txt + '</span><a href="#" id="helpLink">¿Cómo compartir ubicación?</a>';
+  $("helpLink").onclick = e => { e.preventDefault(); $("riderHelp").classList.toggle("hidden"); };
+}
+function ageText(s){ return s < 90 ? s + " s" : Math.round(s / 60) + " min"; }
+function renderStats(){
+  const os = orders(), c = {};
+  ACTIVE.concat(["entregado", "cancelado"]).forEach(s => c[s] = os.filter(o => o.status === s).length);
+  const sales = os.filter(o => o.status !== "cancelado").reduce((a, o) => a + (o.total || 0), 0);
+  const cell = (n, l, hot) => '<div class="stat ' + (hot ? "hot" : "") + '"><b>' + n + "</b>" + l + "</div>";
+  $("stats").innerHTML = cell(c.nuevo, "Nuevos", c.nuevo > 0) + cell(c.preparando, "Preparando") + cell(c.listo, "Listos", c.listo > 0) +
+    cell(c.en_camino, "En camino") + cell(c.entregado, "Entregados") + cell(fmtN(sales), "CUP del día");
+}
+
+// ---------------------------------------------------------------- pedidos
+function slotOrder(o){
+  if (o.slot === "asap") return -1;
+  const i = (S.data.slots || []).findIndex(s => s.id === o.slot);
+  return i < 0 ? 99 : i;
+}
+function geoBadge(o){
+  const t = {customer:"pin del cliente ✓", worker:"pin confirmado ✓", memory:"dirección conocida ✓", between:"aprox. entre esquinas", corner:"aprox. esquina",
+             landmark:"aprox. lugar de referencia", street:"solo la calle", area:"solo el reparto", none:"sin pin"}[o.geo_src] || o.geo_src;
+  const cls = ["customer","worker","memory"].includes(o.geo_src) ? "" : (["between","corner","landmark"].includes(o.geo_src) ? "approx" : "bad");
+  return '<button class="geo ' + cls + '" data-act="pin" data-id="' + o.order_id + '">📍 ' + t + (cls ? " · fijar" : " · ver") + "</button>";
+}
+function phoneLinks(o){
+  const p = String(o.phone || ""), digits = p.replace(/\D/g, "");
+  return '<a href="tel:' + esc(p) + '">📞 ' + esc(p) + '</a><a href="https://wa.me/' + digits + '" target="_blank" rel="noopener">💬 WhatsApp</a>';
+}
+function orderCard(o){
+  const st = o.status, isNew = S.newIds.has(o.order_id);
+  let etaLine = "";
+  if (st === "en_camino" && o.eta && o.eta.eta) etaLine = '<div class="etaline">🕒 Llega ~' + fmtClock(o.eta.eta) + (o.eta.before ? " · " + o.eta.before + " antes" : "") + "</div>";
+  let primary = "";
+  if (st === "nuevo") primary = '<button class="btn" data-act="status" data-st="preparando" data-id="' + o.order_id + '">Empezar a preparar</button>';
+  else if (st === "preparando") primary = '<button class="btn" data-act="status" data-st="listo" data-id="' + o.order_id + '">Está listo</button>';
+  else if (st === "listo") primary = '<button class="btn sec" data-act="route1" data-id="' + o.order_id + '">🗺 Agregar a la ruta</button>';
+  else if (st === "en_camino") primary = '<button class="btn" data-act="status" data-st="entregado" data-id="' + o.order_id + '">✓ Entregado</button>';
+  const more = [];
+  if (PREV[st]) more.push('<button class="btn dim" data-act="status" data-st="' + PREV[st] + '" data-id="' + o.order_id + '">↩ Volver a «' + STATUS[PREV[st]] + '»</button>');
+  if (st !== "entregado" && st !== "cancelado"){
+    more.push('<button class="btn dim" data-act="slot" data-id="' + o.order_id + '">🕒 Reprogramar</button>');
+    more.push('<button class="btn warn" data-act="status" data-st="cancelado" data-id="' + o.order_id + '" data-confirm="¿Cancelar este pedido?">Cancelar</button>');
+  }
+  if (!o.no_show && st !== "cancelado") more.push('<button class="btn warn" data-act="noshow" data-id="' + o.order_id + '" data-confirm="¿Marcar que el cliente NO recibió el pedido? Suma un incumplimiento (a los 2 queda bloqueado).">No llegó / no recibió</button>');
+  if (o.no_show) more.push('<span class="note">⚠️ Marcado como incumplimiento</span>');
+  return '<div class="order st-' + st + (isNew ? " new" : "") + '" id="o-' + o.order_id + '">' +
+    '<div class="o1"><span class="id">#' + esc(o.short) + '</span><span class="t">' + fmtIso(o.created_at) + '</span><span class="pill">' + STATUS[st] + '</span></div>' +
+    '<div class="o1" style="margin-top:4px"><span class="who">' + esc(o.name) + '</span>' + (o.alias ? '<span class="alias">“' + esc(o.alias) + '”</span>' : "") + "</div>" +
+    '<div class="addr">' + esc(o.address) + "</div>" + geoBadge(o) +
+    '<div class="contact">' + phoneLinks(o) + "</div>" +
+    '<div class="items">' + o.items.map(i => i.qty + "× " + esc(i.name)).join("<br>") + "</div>" +
+    (o.notes ? '<div class="notes">📝 ' + esc(o.notes) + "</div>" : "") + etaLine +
+    '<div><span class="total">' + fmtN(o.total) + " CUP</span>" + (o.coupon_code ? ' <span class="note">cupón ' + esc(o.coupon_code) + "</span>" : "") + ' <span class="note">· se cobra al entregar</span></div>' +
+    '<div class="acts">' + primary + "</div>" +
+    (more.length ? '<details class="more"><summary>Más opciones</summary><div class="acts">' + more.join("") + "</div></details>" : "") + "</div>";
+}
+function renderOrders(){
+  const os = orders(), open = os.filter(o => ACTIVE.includes(o.status)), done = os.filter(o => !ACTIVE.includes(o.status));
+  let html = "";
+  if (!os.length) html = '<div class="empty">Aún no hay pedidos para este día. 🌿<br>Cuando entre uno, suena una alerta.</div>';
+  const groups = {};
+  open.forEach(o => { (groups[o.slot] = groups[o.slot] || []).push(o); });
+  Object.keys(groups).sort((a, b) => slotOrder({slot: a}) - slotOrder({slot: b})).forEach(sid => {
+    const list = groups[sid], label = list[0].slot_label || "Lo antes posible";
+    const ready = list.filter(o => o.status === "listo").length;
+    html += '<div class="group"><div class="ghead"><h2>' + esc(label) + '</h2><span class="cnt">' + list.length + " pedido" + (list.length === 1 ? "" : "s") + (ready ? " · " + ready + " listos" : "") + "</span>" +
+      (ready ? '<button data-act="routeSlot" data-slot="' + esc(sid) + '">🗺 Armar ruta (' + ready + ")</button>" : "") + "</div>" +
+      list.map(orderCard).join("") + "</div>";
+  });
+  if (done.length){
+    html += '<button class="done-toggle" data-act="toggleDone">' + (S.showDone ? "Ocultar" : "Ver") + " terminados (" + done.length + ")</button>";
+    if (S.showDone) html += done.map(orderCard).join("");
+  }
+  const y = $("colOrders").scrollTop; // (en escritorio la columna no hace scroll propio)
+  $("colOrders").innerHTML = html;
+  $("colOrders").scrollTop = y;
+}
+
+// ---------------------------------------------------------------- acciones
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id;
+  if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+  try {
+    if (act === "status"){ await orderAction(id, {action: "status", status: b.dataset.st}); }
+    else if (act === "noshow"){ const r = await orderAction(id, {action: "no_show"}); toast("Registrado" ); }
+    else if (act === "pin") openPinModal(id);
+    else if (act === "slot") openSlotModal(id);
+    else if (act === "toggleDone"){ S.showDone = !S.showDone; renderOrders(); }
+    else if (act === "route1"){ S.sel.add(id); S.selTouched = true; S.plan = null; setTab("route"); render(); }
+    else if (act === "routeSlot"){
+      S.sel = new Set(orders().filter(o => o.status === "listo" && o.slot === b.dataset.slot && o.lat != null).map(o => o.order_id));
+      S.selTouched = true; S.plan = null; setTab("route"); render(); computePlan();
+    }
+  } catch(err){ if (err.message !== "401") toast(err.message || "No se pudo hacer", true); }
+});
+async function orderAction(id, body){
+  const r = await api("POST", "/api/panel/orders/" + encodeURIComponent(id), body);
+  await refresh();
+  return r;
+}
+
+// ---------------------------------------------------------------- ruta
+function candidates(){
+  return orders().filter(o => ["nuevo", "preparando", "listo"].includes(o.status));
+}
+function autoSelect(){
+  // por defecto: todos los pedidos LISTOS que tienen pin
+  S.sel = new Set(orders().filter(o => o.status === "listo" && o.lat != null).map(o => o.order_id));
+}
+function riderFresh(){ const r = S.data.rider; return r && r.age <= 240 ? r : null; }
+function kitchen(){ return S.data.kitchen; }
+function tripPending(){
+  const t = S.data.trip;
+  if (!t) return [];
+  return t.stops.filter(s => !s.done).map(s => ({stop: s, order: byId(s.o)})).filter(x => x.order);
+}
+function renderRoute(){
+  const box = $("routeBox");
+  const pend = tripPending();
+  let html = "";
+
+  // --- viaje en curso
+  if (pend.length){
+    html += '<div class="panelbox"><h3>🚴 En camino ahora</h3>' + pend.map((x, i) => {
+      const o = x.order;
+      return '<div class="stop"><div class="n">' + (i + 1) + '</div><div class="body"><div class="nm">' + esc(o.name) + '</div><div class="ad">' + esc(o.address) + "</div>" +
+        (o.eta && o.eta.eta ? '<div class="eta">🕒 ~' + fmtClock(o.eta.eta) + (o.eta.mode === "gps" ? " · en vivo" : " · plan") + "</div>" : "") +
+        '<div class="acts"><button class="btn" data-act="status" data-st="entregado" data-id="' + o.order_id + '">✓ Entregué</button>' +
+        '<button class="btn dim" data-act="status" data-st="listo" data-id="' + o.order_id + '" data-confirm="¿Sacar este pedido del viaje (no estaba / se queda para después)?">No estaba</button></div></div></div>';
+    }).join("") +
+      '<div class="acts" style="margin-top:8px"><button class="btn sec" id="btnReplan">↻ Recalcular ruta desde donde estoy</button><button class="btn warn" id="btnEndTrip">Terminar viaje</button></div>' +
+      '<div class="note">Cada «Entregué» corrige la hora de los demás clientes, aunque no haya GPS.</div></div>';
+  }
+
+  // --- armar una ruta nueva
+  const cands = candidates();
+  const r = riderFresh();
+  html += '<div class="panelbox"><h3>🗺 Armar ruta</h3>';
+  html += '<div class="seg"><button data-from="kitchen" class="' + (S.routeFrom === "kitchen" ? "on" : "") + '">Sale de la cocina</button>' +
+    '<button data-from="rider" class="' + (S.routeFrom === "rider" ? "on" : "") + '"' + (r ? "" : " disabled style='opacity:.4'") + '>Desde mi posición</button></div>';
+  if (!cands.length) html += '<div class="note">No hay pedidos por salir. Marca pedidos como «Está listo» y aparecerán aquí.</div>';
+  else {
+    html += '<div class="quick"><button data-q="ready">Solo los listos</button><button data-q="all">Todos</button><button data-q="none">Ninguno</button></div>';
+    const groups = {};
+    cands.forEach(o => { (groups[o.slot] = groups[o.slot] || []).push(o); });
+    Object.keys(groups).sort((a, b) => slotOrder({slot: a}) - slotOrder({slot: b})).forEach(sid => {
+      html += '<div class="note" style="margin:8px 0 2px"><b>' + esc(groups[sid][0].slot_label || "Lo antes posible") + "</b></div>";
+      groups[sid].forEach(o => {
+        const nopin = o.lat == null;
+        html += '<label class="pick ' + (nopin ? "nopin" : "") + '"><input type="checkbox" data-pick="' + o.order_id + '" ' + (S.sel.has(o.order_id) && !nopin ? "checked" : "") + (nopin ? " disabled" : "") + ">" +
+          '<span><b>' + esc(o.name) + "</b> · " + STATUS[o.status] + '<div class="sub">' + esc(o.address) + (nopin ? " — <b>sin pin: fíjalo en Pedidos</b>" : "") + "</div></span></label>";
+      });
+    });
+    const n = [...S.sel].filter(id => { const o = byId(id); return o && o.lat != null && ["nuevo", "preparando", "listo"].includes(o.status); }).length;
+    html += '<button class="btn big" id="btnPlan" ' + (n && !S.planBusy ? "" : "disabled") + ">" + (S.planBusy ? "Calculando…" : "Calcular mejor ruta (" + n + ")") + "</button>";
+  }
+  html += "</div>";
+
+  // --- resultado del plan
+  if (S.plan){
+    const p = S.plan.p;
+    html += '<div class="panelbox"><h3>Orden sugerido</h3>' + S.plan.orders.map((o, i) => {
+      const eta = Date.now() / 1000 + S.skew + p.etas[i];
+      return '<div class="stop"><div class="n">' + (i + 1) + '</div><div class="body"><div class="nm">' + esc(o.name) + '</div><div class="ad">' + esc(o.address) + "</div>" +
+        '<div class="eta">+' + Math.max(1, Math.round(p.etas[i] / 60)) + " min · ~" + fmtClock(eta) + "</div></div></div>";
+    }).join("") +
+      '<div class="note">Total ~' + Math.round(p.totalSec / 60) + " min en bici." + (p.source === "osrm" ? " Ruta por calles reales (OpenStreetMap)." : " ⚠️ Estimada en línea recta (el servicio de rutas no respondió); sirve igual para el orden.") + "</div>" +
+      '<button class="btn big" id="btnStart">🚴 Salí con estos ' + S.plan.orders.length + " pedido" + (S.plan.orders.length === 1 ? "" : "s") + "</button></div>";
+  }
+  box.innerHTML = html;
+}
+$("routeBox").addEventListener("click", async e => {
+  const t = e.target;
+  try {
+    if (t.closest("#btnPlan")) computePlan();
+    else if (t.closest("#btnStart")) startTrip();
+    else if (t.closest("#btnReplan")) replanTrip();
+    else if (t.closest("#btnEndTrip")){ if (confirm("¿Terminar el viaje? Los pedidos que sigan «En camino» quedarán así hasta que los marques.")){ await api("POST", "/api/panel/trip", {stops: []}); S.tripGeom = null; await refresh(); toast("Viaje terminado"); } }
+    else if (t.closest("[data-from]")){ const f = t.closest("[data-from]"); if (!f.disabled){ S.routeFrom = f.dataset.from; S.plan = null; renderRoute(); } }
+    else if (t.closest("[data-q]")){
+      const q = t.closest("[data-q]").dataset.q; S.selTouched = true; S.plan = null;
+      const withPin = candidates().filter(o => o.lat != null);
+      S.sel = new Set(q === "none" ? [] : (q === "all" ? withPin : withPin.filter(o => o.status === "listo")).map(o => o.order_id));
+      render();
+    }
+  } catch(err){ if (err.message !== "401") toast(err.message || "No se pudo hacer", true); }
+});
+$("routeBox").addEventListener("change", e => {
+  const c = e.target.closest("[data-pick]");
+  if (!c) return;
+  S.selTouched = true; S.plan = null;
+  if (c.checked) S.sel.add(c.dataset.pick); else S.sel.delete(c.dataset.pick);
+  renderRoute(); drawMap();
+});
+function startPoint(){
+  const r = riderFresh();
+  if (S.routeFrom === "rider" && r) return {lat: r.lat, lng: r.lng};
+  return {lat: kitchen().lat, lng: kitchen().lng};
+}
+async function computePlan(){
+  const stops = [...S.sel].map(byId).filter(o => o && o.lat != null && ["nuevo", "preparando", "listo"].includes(o.status));
+  if (!stops.length){ toast("Elige al menos un pedido con pin", true); return; }
+  S.planBusy = true; renderRoute();
+  try {
+    const start = startPoint();
+    const p = await Route.plan(start, stops.map(o => ({lat: o.lat, lng: o.lng})));
+    S.plan = {start, p, orders: p.order.map(i => stops[i])};
+    S.fitOnce = false;
+  } finally { S.planBusy = false; }
+  renderRoute(); drawMap();
+}
+async function startTrip(){
+  const pl = S.plan;
+  if (!pl) return;
+  const body = {start: pl.start, stops: pl.orders.map((o, i) => ({order_id: o.order_id, sec: Math.round(pl.p.legs[i]), m: Math.round(pl.p.dist[i])}))};
+  const btn = $("btnStart"); if (btn){ btn.disabled = true; btn.textContent = "Guardando…"; }
+  try {
+    await api("POST", "/api/panel/trip", body);
+    S.tripGeom = pl.p.geometry; S.plan = null; S.sel = new Set(); S.selTouched = false; S.fitOnce = false;
+    await refresh(); toast("¡Buen viaje! 🚴 Los clientes ya ven su hora.");
+  } catch(err){ if (err.message !== "401") toast(err.message, true); render(); }
+}
+async function replanTrip(){
+  const pend = tripPending();
+  if (!pend.length) return;
+  const stops = pend.map(x => x.order).filter(o => o.lat != null);
+  const r = riderFresh();
+  const start = r ? {lat: r.lat, lng: r.lng} : {lat: kitchen().lat, lng: kitchen().lng};
+  toast("Recalculando…");
+  const p = await Route.plan(start, stops.map(o => ({lat: o.lat, lng: o.lng})));
+  const ordered = p.order.map(i => stops[i]);
+  await api("POST", "/api/panel/trip", {start, stops: ordered.map((o, i) => ({order_id: o.order_id, sec: Math.round(p.legs[i]), m: Math.round(p.dist[i])}))});
+  S.tripGeom = p.geometry; S.fitOnce = false;
+  await refresh(); toast("Ruta recalculada");
+}
+
+// ---------------------------------------------------------------- mapa
+function ensureMap(){
+  if (S.map) return S.map;
+  const el = $("mapWrap");
+  if (!el.clientWidth) return null;
+  const c = S.data.center || {lat: 21.3808, lng: -77.9169};
+  S.map = TMap.create(el, {lat: kitchen().lat, lng: kitchen().lng, zoom: 13});
+  return S.map;
+}
+function setMk(id, lat, lng, html, bottom){ S.map.setMarker(id, lat, lng, {html, bottom}); S.markers.add(id); }
+function drawMap(){
+  if (!S.data) return;
+  const m = ensureMap();
+  if (!m) return;
+  const want = new Set(), pts = [];
+  const k = kitchen();
+  setMk("kitchen", k.lat, k.lng, '<div class="tm-home">🍳</div>'); want.add("kitchen"); pts.push([k.lat, k.lng]);
+  const r = S.data.rider;
+  if (r){ setMk("rider", r.lat, r.lng, '<div class="tm-dot rider"></div>'); want.add("rider"); pts.push([r.lat, r.lng]); }
+
+  const numbered = new Map();
+  if (S.plan) S.plan.orders.forEach((o, i) => numbered.set(o.order_id, i + 1));
+  else tripPending().forEach((x, i) => numbered.set(x.order.order_id, i + 1));
+
+  orders().filter(o => ACTIVE.includes(o.status) && o.lat != null).forEach(o => {
+    const n = numbered.get(o.order_id), id = "o:" + o.order_id;
+    setMk(id, o.lat, o.lng, n ? '<div class="tm-num">' + n + "</div>" : '<div class="dotmk" title="' + esc(o.name) + '" style="background:' + DOT_COLOR[o.status] + '"></div>');
+    want.add(id); if (n) pts.push([o.lat, o.lng]);
+  });
+  [...S.markers].forEach(id => { if (!want.has(id)){ m.removeMarker(id); S.markers.delete(id); } });
+
+  const line = S.plan ? S.plan.p.geometry : (tripPending().length ? S.tripGeom : null);
+  if (line && line.length > 1) m.setLine(line, {color: "#1E6BD6", width: 5}); else m.clearLine();
+  if (!S.fitOnce && pts.length){ m.fitBounds(pts, 40); S.fitOnce = true; }
+}
+
+// ---------------------------------------------------------------- modales
+function openModal(html){ $("modalHost").innerHTML = '<div class="modal" id="modal"><div class="box">' + html + "</div></div>"; $("modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); }); }
+function closeModal(){ if (S.pinMap){ S.pinMap.destroy(); S.pinMap = null; } $("modalHost").innerHTML = ""; }
+
+function openPinModal(orderId, isKitchen){
+  const o = isKitchen ? null : byId(orderId);
+  const start = isKitchen ? kitchen() : (o.lat != null ? {lat: o.lat, lng: o.lng} : (S.data.center || {lat: 21.3808, lng: -77.9169}));
+  const zoom = isKitchen ? 16 : (o.lat != null && ["customer", "worker", "memory", "between", "corner"].includes(o.geo_src) ? 17 : 14);
+  openModal("<h3>" + (isKitchen ? "🍳 Punto de fabricación" : "📍 Fijar pin") + '</h3><div class="sub">' +
+    (isKitchen ? "Mueve el mapa hasta que el pin quede sobre la cocina. Desde ahí se calculan todas las rutas." :
+      "<b>" + esc(o.address) + "</b><br>Mueve el mapa hasta que el pin quede sobre la casa. Queda guardado: la próxima vez que pidan a esta dirección ya se sabrá.") +
+    '</div><div id="pinMap"></div><div class="acts" style="margin-top:12px"><button class="btn" id="pinSave" style="flex:1">Guardar</button><button class="btn dim" id="pinCancel">Cancelar</button></div>');
+  S.pinMap = TMap.create($("pinMap"), {lat: start.lat, lng: start.lng, zoom, centerPin: true});
+  $("pinCancel").onclick = closeModal;
+  $("pinSave").onclick = async () => {
+    const c = S.pinMap.getCenter();
+    $("pinSave").disabled = true;
+    try {
+      if (isKitchen) await api("POST", "/api/panel/kitchen", {lat: c.lat, lng: c.lng});
+      else await api("POST", "/api/panel/orders/" + encodeURIComponent(orderId), {action: "pin", lat: c.lat, lng: c.lng});
+      closeModal(); S.plan = null; S.fitOnce = false; await refresh(); toast("Guardado ✓");
+    } catch(err){ $("pinSave").disabled = false; if (err.message !== "401") toast(err.message, true); }
+  };
+}
+function openSlotModal(orderId){
+  const o = byId(orderId), d = S.data;
+  const chip = (day, sid, label) => '<button class="chip ' + (o.delivery_day === day && o.slot === sid ? "sel" : "") + '" data-day="' + day + '" data-slot="' + sid + '">' + esc(label) + "</button>";
+  const sl = s => s.label + " " + s.start + "–" + s.end;
+  openModal("<h3>🕒 Reprogramar</h3><div class=\"sub\">" + esc(o.name) + " · ahora: <b>" + esc(o.slot_label) + "</b> (" + o.delivery_day + ")</div>" +
+    '<div class="slotday">Hoy</div><div class="chips">' + chip(d.today, "asap", "Lo antes posible") + d.slots.map(s => chip(d.today, s.id, sl(s))).join("") + "</div>" +
+    '<div class="slotday">Mañana</div><div class="chips">' + d.slots.map(s => chip(d.tomorrow, s.id, sl(s))).join("") + "</div>" +
+    '<div class="acts"><button class="btn dim" id="slotCancel">Cerrar</button></div>');
+  $("slotCancel").onclick = closeModal;
+  $("modal").addEventListener("click", async e => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    try { await api("POST", "/api/panel/orders/" + encodeURIComponent(orderId), {action: "slot", day: c.dataset.day, slot: c.dataset.slot}); closeModal(); await refresh(); toast("Reprogramado ✓"); }
+    catch(err){ if (err.message !== "401") toast(err.message, true); }
+  });
+}
+
+// ---------------------------------------------------------------- menu, dia, pestañas, GPS
+$("menuBtn").addEventListener("click", e => { e.stopPropagation(); $("menu").classList.toggle("hidden"); });
+document.addEventListener("click", e => { if (!e.target.closest("#menu")) $("menu").classList.add("hidden"); });
+$("mKitchen").onclick = () => { $("menu").classList.add("hidden"); openPinModal(null, true); };
+$("mLogout").onclick = () => logout("");
+$("mSound").onclick = () => { S.sound = !S.sound; $("mSoundState").textContent = S.sound ? "(activado)" : "(apagado)"; if (S.sound) beep(); };
+$("mGps").onclick = () => {
+  if (S.geoWatch != null){ navigator.geolocation.clearWatch(S.geoWatch); S.geoWatch = null; $("mGpsState").textContent = "(apagado)"; toast("GPS de este teléfono apagado"); return; }
+  if (!navigator.geolocation){ toast("Este navegador no tiene GPS", true); return; }
+  $("mGpsState").textContent = "(encendido: solo con la pantalla prendida)";
+  S.geoWatch = navigator.geolocation.watchPosition(pos => {
+    if (Date.now() - S.geoSent < 20000) return;
+    S.geoSent = Date.now();
+    api("POST", "/api/panel/rider", {lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy}).catch(() => {});
+  }, () => { toast("No se pudo leer el GPS. Revisa el permiso de ubicación.", true); $("mGpsState").textContent = "(apagado)"; S.geoWatch = null; },
+  {enableHighAccuracy: true, maximumAge: 10000, timeout: 20000});
+  $("menu").classList.add("hidden");
+};
+$("days").addEventListener("click", e => {
+  const b = e.target.closest("[data-day]"); if (!b) return;
+  S.dayMode = b.dataset.day; S.selTouched = false; S.plan = null; S.known = null;
+  [...$("days").children].forEach(x => x.classList.toggle("on", x === b));
+  refresh().then(render).catch(() => {});
+});
+function setTab(t){
+  S.tab = t; $("cols").className = "cols tab-" + t;
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  if (t === "route"){ setTimeout(() => { ensureMap(); if (S.map) S.map.resize(); drawMap(); }, 30); }
+}
+document.querySelector(".tabs").addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+
+// ---------------------------------------------------------------- arranque y ciclo
+let timer = null;
+function loop(){
+  clearTimeout(timer);
+  timer = setTimeout(async () => { if (!document.hidden && S.key) await refresh().catch(() => {}); loop(); }, 20000);
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && S.key && S.data) refresh().catch(() => {}); });
+setInterval(() => { if (S.data && !document.hidden) renderConn(); }, 15000);
+
+if (S.key){
+  refresh(true).then(() => { showApp(); render(); loop(); }).catch(() => { if (S.key) { $("loginErr").textContent = "No se pudo conectar. Revisa tu internet y vuelve a entrar."; } });
+}
+$("loginForm").addEventListener("submit", () => setTimeout(loop, 1000));
+})();
+</script>
+</body>
+</html>

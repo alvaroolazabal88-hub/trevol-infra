@@ -29,3 +29,26 @@ telegram_chat_id   = ""
 twilio_account_sid   = ""
 twilio_auth_token    = ""
 twilio_whatsapp_from = ""
+
+# ---- Worker panel + live delivery tracking (all optional) ----
+
+# Panel for the kitchen/rider: https://<your site>/panel.html
+# Leave worker_key empty and Terraform makes one:  terraform output -raw worker_key
+# worker_key = ""
+
+# The rider shares Telegram "live location" ONCE per trip in a chat with the
+# bot, and customers see the rider approaching. The chat in telegram_chat_id
+# is authorized automatically. To authorize another rider: they write /start
+# to the bot, the bot replies with their id, and you put it here.
+# telegram_worker_ids = "123456789"
+
+# Where deliveries start (you can also move it from the panel with one tap).
+# kitchen_lat = 21.3808
+# kitchen_lng = -77.9169
+
+# Windows the customer can choose at checkout ("Lo antes posible" is always there).
+# Empty = Desayuno 07:00-09:00 and Merienda 15:00-17:00.
+# delivery_slots = "[{\"id\":\"desayuno\",\"label\":\"Desayuno\",\"start\":\"07:00\",\"end\":\"09:00\"},{\"id\":\"merienda\",\"label\":\"Merienda\",\"start\":\"15:00\",\"end\":\"17:00\"}]"
+
+# prep_minutes      = 25   # kitchen time for "as soon as possible" estimates
+# slot_lead_minutes = 30   # a window stops taking orders this long before it ends

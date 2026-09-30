@@ -18,3 +18,7 @@ output "coupons_table_name" {
 output "customers_table_name" {
   value = aws_dynamodb_table.customers.name
 }
+
+output "geo_table_name" {
+  value = aws_dynamodb_table.geo.name
+}

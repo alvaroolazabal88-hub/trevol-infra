@@ -1,0 +1,7 @@
+{
+  "_help": "Vocabulario propio de Camagüey. Todo es opcional: el geocodificador ya perdona faltas de ortografía, quita 'Calle'/'Ave.'/'de la' y entiende 'e/', 'esq.', 'Rpto'. Aquí agregas cómo LA GENTE le dice a un lugar y no coincide con el nombre en el mapa. Escribe a la izquierda lo que dice la gente y a la derecha el nombre tal como está en el catálogo (camaguey.json). Prueba cada cambio con: python3 tools/build_gazetteer.py --check \"la dirección\"",
+  "abbreviations": {},
+  "streets": {},
+  "areas": {},
+  "landmarks": {}
+}
